@@ -147,42 +147,46 @@ loadChapters();renderBookmarks();stats();
 // Local-only ASR: microphone recording -> 16 kHz mono -> ONNX -> conservative Quran matcher.
 const MODEL='https://huggingface.co/muhdur/tilawi-fastconformer-quran/resolve/main/fastconformer_full_mixed.onnx';
 const ASSETS='https://huggingface.co/muhdur/tilawi-fastconformer-quran/resolve/main/';
-let asrSession=null,ort=null,recorder=null,stream=null,chunks=[],assets=null;
+const ASR_CACHE='rattil-asr-assets-v1';
+let asrSession=null,ort=null,recorder=null,stream=null,chunks=[],assets=null,asrLoading=null;
 function asrStatus(s){$('asrStatus').textContent=s;}
+async function requestPersistentStorage(){try{if(navigator.storage?.persist){const granted=await navigator.storage.persist();return granted?'التخزين الدائم متاح على هذا الجهاز.':'المتصفح قد يدير مساحة التخزين تلقائيًا.';}}catch(e){console.warn('Persistent storage request unavailable',e);}return 'التخزين المحلي يعتمد على سياسة المتصفح.';}
+async function cachedAsset(url,label,onProgress){
+ const cache=await caches.open(ASR_CACHE),cached=await cache.match(url);
+ if(cached){onProgress?.('تحميل '+label+' من التخزين المحلي…');return cached.arrayBuffer();}
+ onProgress?.('تنزيل '+label+' لأول مرة…');
+ const response=await fetch(url,{mode:'cors'});if(!response.ok)throw Error('تعذر تنزيل '+label+': '+response.status);
+ const save=cache.put(url,response.clone()).catch(err=>console.warn('ASR cache write failed for '+label,err));
+ const bytes=await response.arrayBuffer();await save;return bytes;
+}
+async function asrCacheInfo(){try{const c=await caches.open(ASR_CACHE),keys=await c.keys(),storage=await navigator.storage?.estimate?.();return {hasModel:keys.some(r=>r.url===MODEL),count:keys.length,usage:storage?.usage,quota:storage?.quota};}catch(e){return {hasModel:false,count:0};}}
+async function updateAsrCacheButton(){const b=$('clearAsrCache');if(!b)return;const info=await asrCacheInfo();b.disabled=!info.count;b.textContent=info.count?'حذف ملفات التسميع المحفوظة':'لا توجد ملفات محفوظة';}
 async function loadAsr(){
+ if(asrSession){asrStatus('محرك التسميع جاهز بالفعل على هذا الجهاز.');return;}
+ if(asrLoading)return asrLoading;
  const btn=$('loadAsr');btn.disabled=true;
- try{
-  asrStatus('تحميل مكتبات التشغيل…');
-  ort=await import('https://cdn.jsdelivr.net/npm/onnxruntime-web@1.24.2/dist/ort.min.mjs');
-  ort.env.wasm.wasmPaths='https://cdn.jsdelivr.net/npm/onnxruntime-web@1.24.2/dist/';
-  ort.env.wasm.numThreads=1;
+ asrLoading=(async()=>{try{
+  const persistence=await requestPersistentStorage();asrStatus('تجهيز مكتبات التشغيل… '+persistence);
+  ort=await import('https://cdn.jsdelivr.net/npm/onnxruntime-web@1.24.2/dist/ort.min.mjs');ort.env.wasm.wasmPaths='https://cdn.jsdelivr.net/npm/onnxruntime-web@1.24.2/dist/';ort.env.wasm.numThreads=1;
   const core=await import('https://esm.sh/@tilawi/quran-asr@0.1.0');
-  asrStatus('تحميل ملفات التعرف والقرآن (حوالي 104 ميجابايت)…');
-  const [model,vocab,tokens,quran]=await Promise.all([
-   fetch(MODEL,{cache:'force-cache'}).then(r=>{if(!r.ok)throw Error('تعذر تنزيل النموذج: '+r.status);return r.arrayBuffer();}),
-   fetch(ASSETS+'vocab.json').then(r=>{if(!r.ok)throw Error('vocab download failed');return r.json();}),
-   fetch(ASSETS+'quran_ctc_tokens.json').then(r=>{if(!r.ok)throw Error('token table download failed');return r.json();}),
-   fetch(ASSETS+'quran.json').then(r=>{if(!r.ok)throw Error('Quran data download failed');return r.json();})
+  const before=await asrCacheInfo();if(before.hasModel)asrStatus('وجدت نموذج التسميع محفوظًا. جاري تحميله من الجهاز…');
+  const [model,vocabBytes,tokensBytes,quranBytes]=await Promise.all([
+   cachedAsset(MODEL,'نموذج الذكاء الاصطناعي',asrStatus),cachedAsset(ASSETS+'vocab.json','قاموس الكلمات',asrStatus),
+   cachedAsset(ASSETS+'quran_ctc_tokens.json','جدول رموز القرآن',asrStatus),cachedAsset(ASSETS+'quran.json','بيانات القرآن',asrStatus)
   ]);
+  const decode=b=>JSON.parse(new TextDecoder().decode(b)),vocab=decode(vocabBytes),tokens=decode(tokensBytes),quran=decode(quranBytes);
   asrStatus('تهيئة النموذج على الجهاز…');
   const session=await ort.InferenceSession.create(model,{executionProviders:['wasm'],graphOptimizationLevel:'all'});
-  const audioName=session.inputNames.find(n=>/audio|signal|input/i.test(n))||session.inputNames[0];
-  const lengthName=session.inputNames.find(n=>/len/i.test(n))||session.inputNames[1];
-  const outputName=session.outputNames[0];
-  const runner={async run(audio){
-   const input=new ort.Tensor('float32',audio,[1,audio.length]);
-   const length=new ort.Tensor('int64',BigInt64Array.from([BigInt(audio.length)]),[1]);
-   const result=await session.run({[audioName]:input,[lengthName]:length});
-   const out=result[outputName],dims=out.dims;
-   return {logprobs:out.data,timeSteps:Number(dims[dims.length-2]),vocabSize:Number(dims[dims.length-1])};
-  }};
-  asrSession=core.createAsrSession(runner,{vocab,quranCtcTokens:tokens,quran,blankId:1024});
-  assets={quran,judgeAttempt:core.judgeAttempt};
-  $('startRec').disabled=false;
-  asrStatus('المحرك جاهز. يمكنك الآن بدء التسميع. يعمل التعرف محليًا على جهازك.');
- }catch(e){console.error(e);asrStatus('لم يكتمل تحميل المحرك: '+(e?.message||'خطأ غير معروف')+'. جرّب شبكة مستقرة ثم أعد المحاولة.');btn.disabled=false;}
+  const audioName=session.inputNames.find(n=>/audio|signal|input/i.test(n))||session.inputNames[0],lengthName=session.inputNames.find(n=>/len/i.test(n))||session.inputNames[1],outputName=session.outputNames[0];
+  const runner={async run(audio){const input=new ort.Tensor('float32',audio,[1,audio.length]),length=new ort.Tensor('int64',BigInt64Array.from([BigInt(audio.length)]),[1]);const result=await session.run({[audioName]:input,[lengthName]:length});const out=result[outputName],dims=out.dims;return {logprobs:out.data,timeSteps:Number(dims[dims.length-2]),vocabSize:Number(dims[dims.length-1])};}};
+  asrSession=core.createAsrSession(runner,{vocab,quranCtcTokens:tokens,quran,blankId:1024});assets={quran,judgeAttempt:core.judgeAttempt};$('startRec').disabled=false;
+  asrStatus('محرك التسميع جاهز. الملفات محفوظة محليًا؛ في المرات القادمة سيُستخدم التخزين المحلي بدل تنزيلها من جديد.');await updateAsrCacheButton();
+ }catch(e){console.error(e);asrStatus('لم يكتمل تحميل المحرك: '+(e?.message||'خطأ غير معروف')+'. الملفات التي اكتمل حفظها ستظل متاحة إذا نجح التخزين. حاول مرة أخرى.');btn.disabled=false;}finally{asrLoading=null;}})();
+ return asrLoading;
 }
 $('loadAsr').addEventListener('click',loadAsr);
+$('clearAsrCache').addEventListener('click',async()=>{if(asrLoading){asrStatus('انتظر حتى ينتهي تجهيز المحرك قبل حذف الملفات.');return;}try{await caches.delete(ASR_CACHE);await updateAsrCacheButton();asrStatus(asrSession?'حُذفت الملفات المحفوظة. المحرك الحالي يظل يعمل حتى إغلاق الصفحة.':'تم حذف ملفات التسميع المحفوظة. ستحتاج لتنزيلها مرة أخرى عند الاستخدام القادم.');}catch(e){asrStatus('تعذر حذف التخزين: '+e.message);}});
+updateAsrCacheButton();
 async function startRecording(){
  if(!navigator.mediaDevices?.getUserMedia||!window.MediaRecorder){asrStatus('المتصفح لا يدعم التسجيل المطلوب. افتح رَتِّل من Safari على HTTPS.');return;}
  try{
