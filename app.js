@@ -7,11 +7,45 @@ document.querySelectorAll('[data-home]').forEach(b=>b.addEventListener('click',(
 async function json(url){const r=await fetch(url);if(!r.ok)throw Error('HTTP '+r.status);const j=await r.json();if(j.code!==200)throw Error(j.status||'API error');return j.data;}
 function opt(s){return '<option value="'+s.number+'">'+s.number+'. '+s.name+' — '+s.englishName+'</option>';}
 async function loadChapters(){try{const list=await json(API+'/surah');['surahSelect','memorizeSurah'].forEach(id=>$(id).innerHTML=list.map(opt).join(''));$('surahMeta').textContent='114 سورة • النص بالرسم العثماني';}catch(e){$('quranContent').textContent='تعذر تحميل قائمة السور. تحقق من الاتصال ثم أعد المحاولة.';}}
-async function loadSurah(){const n=$('surahSelect').value;if(!n)return;const out=$('quranContent');out.className='empty';out.textContent='جارٍ تحميل السورة…';try{const [textVerses,tafsirVerses]=await Promise.all([json(API+'/surah/'+n+'/quran-uthmani'),json(API+'/surah/'+n+'/ar.muyassar').catch(()=>null)]);out.className='';$('surahMeta').textContent=textVerses.name+' • '+textVerses.englishName+' • '+textVerses.numberOfAyahs+' آية';out.innerHTML=textVerses.ayahs.map((a,i)=>{const taf=tafsirVerses?.ayahs?.[i]?.text;return '<article class="ayah"><div class="ayahText">'+a.text+' <span class="ayahNum">'+a.numberInSurah+'</span></div><div class="ayahActions"><button type="button" data-tafsir="'+i+'">التفسير الميسر</button><button type="button" data-bookmark="'+a.number+'">حفظ علامة</button></div><div class="verseTafsir" id="tafsir-'+i+'" hidden>'+(taf?taf.replace(/</g,'&lt;'):'التفسير الميسر غير متاح حاليًا لهذه الآية من المصدر.')+'</div></article>';}).join('');out.querySelectorAll('[data-tafsir]').forEach(b=>b.addEventListener('click',()=>{const el=$('tafsir-'+b.dataset.tafsir);el.hidden=!el.hidden;}));out.querySelectorAll('[data-bookmark]').forEach(b=>b.addEventListener('click',()=>{localStorage.setItem('rattil-bookmark',JSON.stringify({surah:+n,ayah:+b.dataset.bookmark}));b.textContent='تم حفظ العلامة ✓';}));localStorage.setItem('rattil-last-surah',n);}catch(e){out.className='empty';out.textContent='تعذر تحميل السورة أو التفسير. حاول مرة أخرى عند توفر الإنترنت.';}}
+async function loadSurah(){const n=$('surahSelect').value;if(!n)return;const out=$('quranContent');out.className='empty';out.textContent='جارٍ تحميل السورة…';try{const [textVerses,tafsirVerses]=await Promise.all([json(API+'/surah/'+n+'/quran-uthmani'),json(API+'/surah/'+n+'/ar.muyassar').catch(()=>null)]);out.className='';$('surahMeta').textContent=textVerses.name+' • '+textVerses.englishName+' • '+textVerses.numberOfAyahs+' آية';out.innerHTML=textVerses.ayahs.map((a,i)=>{const taf=tafsirVerses?.ayahs?.[i]?.text;return '<article class="ayah"><div class="ayahText">'+a.text+' <span class="ayahNum">'+a.numberInSurah+'</span></div><div class="ayahActions"><button type="button" data-tafsir="'+i+'">التفسير الميسر</button><button type="button" data-bookmark="'+a.number+'">حفظ علامة</button></div><div class="verseTafsir" id="tafsir-'+i+'" hidden>'+(taf?taf.replace(/</g,'&lt;'):'التفسير الميسر غير متاح حاليًا لهذه الآية من المصدر.')+'</div></article>';}).join('');out.querySelectorAll('[data-tafsir]').forEach(b=>b.addEventListener('click',()=>{const el=$('tafsir-'+b.dataset.tafsir);el.hidden=!el.hidden;}));out.querySelectorAll('[data-bookmark]').forEach(b=>b.addEventListener('click',()=>{
+ const globalAyah=+b.dataset.bookmark,localAyah=+b.closest('.ayah').querySelector('.ayahNum').textContent;
+ const items=getBookmarks(),id=n+':'+localAyah;
+ if(items.some(x=>x.id===id)){b.textContent='محفوظة ✓';return;}
+ const surahName=$('surahSelect').selectedOptions[0]?.textContent?.split(' — ')[0]||('السورة '+n);
+ items.push({id,surah:+n,ayah:localAyah,globalAyah,surahName,savedAt:Date.now()});
+ localStorage.setItem(BOOKMARKS_KEY,JSON.stringify(items));b.textContent='تم الحفظ ✓';renderBookmarks();stats();
+}));localStorage.setItem('rattil-last-surah',n);}catch(e){out.className='empty';out.textContent='تعذر تحميل السورة أو التفسير. حاول مرة أخرى عند توفر الإنترنت.';}}
 $('loadSurah').addEventListener('click',loadSurah);
 $('savePlan').addEventListener('click',()=>{const p={surah:+$('memorizeSurah').value,from:+$('memorizeFrom').value,to:+$('memorizeTo').value};if(!p.surah||p.from<1||p.to<p.from){$('planStatus').textContent='راجع أرقام السورة والآيات.';return;}localStorage.setItem('rattil-plan',JSON.stringify(p));$('planStatus').textContent='تم حفظ خطة الحفظ على هذا الجهاز. السورة '+p.surah+'، من الآية '+p.from+' إلى '+p.to+'.';});
-function stats(){const p=JSON.parse(localStorage.getItem('rattil-plan')||'null'),b=JSON.parse(localStorage.getItem('rattil-bookmark')||'null');$('achievementStats').textContent='خطة الحفظ: '+(p?'السورة '+p.surah+'، الآيات '+p.from+'–'+p.to:'لم تُحدد بعد')+' • آخر علامة: '+(b?'السورة '+b.surah+'، الآية '+b.ayah:'لا توجد');}
-loadChapters();stats();
+const BOOKMARKS_KEY='rattil-bookmark-legacys-v1';
+function getBookmarks(){
+ try{
+  const saved=JSON.parse(localStorage.getItem(BOOKMARKS_KEY)||'[]');
+  if(Array.isArray(saved))return saved;
+  return [];
+ }catch{return [];}
+}
+function saveBookmarks(items){localStorage.setItem(BOOKMARKS_KEY,JSON.stringify(items));renderBookmarks();stats();}
+function renderBookmarks(){
+ const host=$('bookmarkList');if(!host)return;
+ const items=getBookmarks();
+ if(!items.length){host.textContent='لا توجد علامات محفوظة بعد.';return;}
+ host.innerHTML='';
+ items.slice().reverse().forEach(item=>{
+  const row=document.createElement('div');row.className='bookmark-item';
+  const label=document.createElement('span');label.textContent=(item.surahName||('السورة '+item.surah))+' — الآية '+item.ayah;
+  const actions=document.createElement('span');
+  const open=document.createElement('button');open.textContent='فتح';open.addEventListener('click',async()=>{ $('surahSelect').value=String(item.surah);await loadSurah();const target=document.querySelector('[data-bookmark="'+item.globalAyah+'"]');target?.scrollIntoView({behavior:'smooth',block:'center'});});
+  const remove=document.createElement('button');remove.className='remove-bookmark';remove.textContent='حذف';remove.addEventListener('click',()=>saveBookmarks(getBookmarks().filter(x=>x.id!==item.id)));
+  actions.append(open,remove);row.append(label,actions);host.append(row);
+ });
+}
+function stats(){
+ const p=JSON.parse(localStorage.getItem('rattil-plan')||'null');
+ const b=getBookmarks();
+ $('achievementStats').textContent='خطة الحفظ: '+(p?'السورة '+p.surah+'، الآيات '+p.from+'–'+p.to:'لم تُحدد بعد')+' • العلامات المحفوظة: '+b.length;
+}
+loadChapters();renderBookmarks();stats();
 
  // Cairo prayer times (Egyptian General Authority of Survey calculation).
  const prayerNames=[['Fajr','الفجر','☼'],['Sunrise','الشروق','☼'],['Dhuhr','الظهر','☀'],['Asr','العصر','◉'],['Maghrib','المغرب','☼'],['Isha','العشاء','☾']];
