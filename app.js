@@ -1,9 +1,34 @@
 (() => {
 const API='https://api.alquran.cloud/v1', $=id=>document.getElementById(id);
 const views={mushaf:'mushafView',memorize:'memorizeView',recite:'reciteView',achievements:'achievementsView'};
-function show(name){document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));if(views[name])$(views[name]).classList.add('active');document.querySelector('.app').scrollIntoView({behavior:'smooth',block:'start'});}
-document.querySelectorAll('.nav a').forEach(a=>a.addEventListener('click',e=>{e.preventDefault();const h=a.getAttribute('href');show(h==='#mushaf'?'mushaf':h==='#memorize'?'memorize':h==='#recite'?'recite':'achievements');}));
-document.querySelectorAll('[data-home]').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));window.scrollTo({top:0,behavior:'smooth'});}));
+let currentScreen='home';
+function renderScreen(name){
+ currentScreen=views[name]?name:'home';
+ const isHome=currentScreen==='home';
+ $('homeView').hidden=!isHome;
+ document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active',!isHome&&v.id===views[currentScreen]));
+ document.body.classList.toggle('screen-open',!isHome);
+ window.scrollTo({top:0,behavior:'instant'});
+}
+function navigate(name){
+ if(!views[name])return;
+ history.pushState({rattilScreen:name},'', '#'+name);
+ renderScreen(name);
+}
+function goBack(){
+ if(currentScreen==='home')return;
+ if(history.state?.rattilScreen){history.back();return;}
+ renderScreen('home');
+}
+document.querySelectorAll('.nav a').forEach(a=>a.addEventListener('click',e=>{e.preventDefault();const key=a.getAttribute('href').slice(1);navigate(key);}));
+document.querySelectorAll('[data-home]').forEach(b=>b.addEventListener('click',()=>goBack()));
+window.addEventListener('popstate',e=>renderScreen(e.state?.rattilScreen||'home'));
+$('prayerCountdown').addEventListener('click',()=>window.scrollTo({top:0,behavior:'smooth'}));
+// iOS-style edge swipe: start within the left 28px, finish with a deliberate rightward drag.
+let touchStart=null;
+document.addEventListener('touchstart',e=>{if(currentScreen!=='home'&&e.touches.length===1&&e.touches[0].clientX<=28)touchStart={x:e.touches[0].clientX,y:e.touches[0].clientY};},{passive:true});
+document.addEventListener('touchend',e=>{if(!touchStart)return;const t=e.changedTouches[0],dx=t.clientX-touchStart.x,dy=Math.abs(t.clientY-touchStart.y);if(dx>85&&dy<90)goBack();touchStart=null;},{passive:true});
+renderScreen(location.hash.slice(1));
 async function json(url){const r=await fetch(url);if(!r.ok)throw Error('HTTP '+r.status);const j=await r.json();if(j.code!==200)throw Error(j.status||'API error');return j.data;}
 function opt(s){return '<option value="'+s.number+'">'+s.number+'. '+s.name+' — '+s.englishName+'</option>';}
 async function loadChapters(){try{const list=await json(API+'/surah');['surahSelect','memorizeSurah'].forEach(id=>$(id).innerHTML=list.map(opt).join(''));$('surahMeta').textContent='114 سورة • النص بالرسم العثماني';}catch(e){$('quranContent').textContent='تعذر تحميل قائمة السور. تحقق من الاتصال ثم أعد المحاولة.';}}
