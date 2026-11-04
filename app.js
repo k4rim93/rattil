@@ -13,6 +13,52 @@ $('savePlan').addEventListener('click',()=>{const p={surah:+$('memorizeSurah').v
 function stats(){const p=JSON.parse(localStorage.getItem('rattil-plan')||'null'),b=JSON.parse(localStorage.getItem('rattil-bookmark')||'null');$('achievementStats').textContent='خطة الحفظ: '+(p?'السورة '+p.surah+'، الآيات '+p.from+'–'+p.to:'لم تُحدد بعد')+' • آخر علامة: '+(b?'السورة '+b.surah+'، الآية '+b.ayah:'لا توجد');}
 loadChapters();stats();
 
+ // Cairo prayer times (Egyptian General Authority of Survey calculation).
+ const prayerNames=[['Fajr','الفجر','☼'],['Sunrise','الشروق','☼'],['Dhuhr','الظهر','☀'],['Asr','العصر','◉'],['Maghrib','المغرب','☼'],['Isha','العشاء','☾']];
+ let prayerDate=new Date(),prayerSchedule=null,prayerTick=null;
+ const dateLabel=d=>new Intl.DateTimeFormat('ar-EG',{weekday:'long',day:'numeric',month:'long'}).format(d);
+ async function loadPrayerTimes(){
+  const d=prayerDate,ds=[String(d.getDate()).padStart(2,'0'),String(d.getMonth()+1).padStart(2,'0'),d.getFullYear()].join('-');
+  $('date').textContent=dateLabel(d);
+  const grid=$('prayerTimes'); if(grid)grid.querySelectorAll('b').forEach(x=>x.textContent='…');
+  try{
+   const url='https://api.aladhan.com/v1/timings/'+ds+'?latitude=30.0444&longitude=31.2357&method=5&timezonestring=Africa%2FCairo';
+   const res=await fetch(url);if(!res.ok)throw Error('HTTP '+res.status);
+   const payload=await res.json();if(payload.code!==200)throw Error('Prayer API unavailable');
+   prayerSchedule=payload.data.timings;
+   prayerNames.forEach(([key,label],i)=>{const el=$('prayer-'+key);if(el)el.textContent=String(prayerSchedule[key]||'--:--').slice(0,5);});
+   $('prayerSource').textContent='القاهرة • حساب الهيئة المصرية العامة للمساحة';
+   updatePrayerCountdown();
+  }catch(e){
+   prayerSchedule=null;$('prayerSource').textContent='تعذر تحميل المواقيت — تحقق من الاتصال وحاول تحديث الصفحة';
+   $('nextPrayer').textContent='مواقيت الصلاة غير متاحة';$('prayerCountdown').textContent='--:--:--';
+  }
+ }
+ function updatePrayerCountdown(){
+  if(!prayerSchedule)return;
+  const now=new Date(),keys=['Fajr','Dhuhr','Asr','Maghrib','Isha'];
+  let upcoming=null,upcomingAt=null,previous=null;
+  for(const key of keys){
+   const [hh,mm]=String(prayerSchedule[key]).split(':').map(Number);
+   const at=new Date(now);at.setHours(hh,mm,0,0);
+   if(at>now&&!upcoming){upcoming=key;upcomingAt=at;}
+   if(at<=now)previous=key;
+  }
+  if(!upcoming){upcoming='Fajr';upcomingAt=new Date(now);upcomingAt.setDate(now.getDate()+1);const [hh,mm]=String(prayerSchedule.Fajr).split(':').map(Number);upcomingAt.setHours(hh,mm,0,0);}
+  const label=prayerNames.find(x=>x[0]===upcoming)?.[1]||'الفجر';
+  $('nextPrayer').textContent='الصلاة القادمة: '+label;
+  const secs=Math.max(0,Math.floor((upcomingAt-now)/1000)),h=Math.floor(secs/3600),m=Math.floor(secs%3600/60),s=secs%60;
+  $('prayerCountdown').textContent=[h,m,s].map(x=>String(x).padStart(2,'0')).join(':');
+  $('previousPrayer').textContent=previous?prayerNames.find(x=>x[0]===previous)[1]:'—';
+  $('upcomingPrayer').textContent=label;
+  const activeKey=upcoming;
+  prayerNames.forEach(([key])=>{const el=$('prayer-'+key)?.closest('.time');if(el)el.classList.toggle('active',key===activeKey);});
+ }
+ $('previousDate').addEventListener('click',()=>{prayerDate.setDate(prayerDate.getDate()-1);loadPrayerTimes();});
+ $('nextDate').addEventListener('click',()=>{prayerDate.setDate(prayerDate.getDate()+1);loadPrayerTimes();});
+ loadPrayerTimes();prayerTick=setInterval(updatePrayerCountdown,1000);
+
+
 // Local-only ASR: microphone recording -> 16 kHz mono -> ONNX -> conservative Quran matcher.
 const MODEL='https://huggingface.co/muhdur/tilawi-fastconformer-quran/resolve/main/fastconformer_full_mixed.onnx';
 const ASSETS='https://huggingface.co/muhdur/tilawi-fastconformer-quran/resolve/main/';
@@ -22,7 +68,7 @@ async function loadAsr(){
  const btn=$('loadAsr');btn.disabled=true;
  try{
   asrStatus('تحميل مكتبات التشغيل…');
-  ort=await import('https://cdn.jsdelivr.net/npm/onnxruntime-web@1.24.2/dist/ort.min.mjs'));
+  ort=await import('https://cdn.jsdelivr.net/npm/onnxruntime-web@1.24.2/dist/ort.min.mjs');
   ort.env.wasm.wasmPaths='https://cdn.jsdelivr.net/npm/onnxruntime-web@1.24.2/dist/';
   ort.env.wasm.numThreads=1;
   const core=await import('https://esm.sh/@tilawi/quran-asr@0.1.0');
