@@ -22,7 +22,7 @@ async function loadAsr(){
  const btn=$('loadAsr');btn.disabled=true;
  try{
   asrStatus('تحميل مكتبات التشغيل…');
-  ort=await import('https://cdn.jsdelivr.net/npm/onnxruntime-web@1.24.2/dist/ort.webgpu.min.js').catch(()=>import('https://cdn.jsdelivr.net/npm/onnxruntime-web@1.24.2/dist/ort.min.js'));
+  ort=await import('https://cdn.jsdelivr.net/npm/onnxruntime-web@1.24.2/dist/ort.min.mjs'));
   ort.env.wasm.wasmPaths='https://cdn.jsdelivr.net/npm/onnxruntime-web@1.24.2/dist/';
   ort.env.wasm.numThreads=1;
   const core=await import('https://esm.sh/@tilawi/quran-asr@0.1.0');
