@@ -1,6 +1,6 @@
 (() => {
 const API='https://api.alquran.cloud/v1', $=id=>document.getElementById(id);
-const views={mushaf:'mushafView',memorize:'memorizeView',recite:'reciteView',achievements:'achievementsView'};
+const views={mushaf:'mushafView',memorize:'memorizeView',recite:'reciteView',achievements:'achievementsView',settings:'settingsView'};
 let currentScreen='home';
 function renderScreen(name){
  currentScreen=views[name]?name:'home';
@@ -21,6 +21,7 @@ function goBack(){
  renderScreen('home');
 }
 document.querySelectorAll('.nav a').forEach(a=>a.addEventListener('click',e=>{e.preventDefault();const key=a.getAttribute('href').slice(1);navigate(key);}));
+$('openSettings').addEventListener('click',()=>navigate('settings'));
 document.querySelectorAll('[data-home]').forEach(b=>b.addEventListener('click',()=>goBack()));
 window.addEventListener('popstate',e=>renderScreen(e.state?.rattilScreen||'home'));
 $('prayerCountdown').addEventListener('click',()=>window.scrollTo({top:0,behavior:'smooth'}));
@@ -30,7 +31,7 @@ document.addEventListener('touchstart',e=>{if(currentScreen!=='home'&&e.touches.
 document.addEventListener('touchend',e=>{if(!touchStart)return;const t=e.changedTouches[0],dx=t.clientX-touchStart.x,dy=Math.abs(t.clientY-touchStart.y);if(dx>85&&dy<90)goBack();touchStart=null;},{passive:true});
 renderScreen(location.hash.slice(1));
 async function json(url){const r=await fetch(url);if(!r.ok)throw Error('HTTP '+r.status);const j=await r.json();if(j.code!==200)throw Error(j.status||'API error');return j.data;}let activeMushafPage=1,selectedVerseKey=null,surahCatalog=[],pageTurnLock=false;
-function applyTheme(mode){const m=["auto","dark","light"].includes(mode)?mode:"auto";localStorage.setItem("rattil-theme",m);document.body.dataset.theme=m==="auto"?(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"):m;document.querySelectorAll("[data-theme-choice]").forEach(b=>b.classList.toggle("selected",b.dataset.themeChoice===m));}
+function applyTheme(mode){const m=["auto","dark","light"].includes(mode)?mode:"auto";localStorage.setItem("rattil-theme",m);document.body.dataset.theme=m==="auto"?(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"):m;document.querySelectorAll("[data-theme-choice]").forEach(b=>b.classList.toggle("selected",b.dataset.themeChoice===m));const status=$("themeStatus");if(status)status.textContent="المظهر الحالي: "+({auto:"تلقائي حسب إعدادات الجهاز",light:"نهاري",dark:"ليلي"}[m]);}
 applyTheme(localStorage.getItem("rattil-theme")||"auto");
 matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change",()=>{if((localStorage.getItem("rattil-theme")||"auto")==="auto")applyTheme("auto");});
 document.querySelectorAll("[data-theme-choice]").forEach(b=>b.addEventListener("click",()=>{applyTheme(b.dataset.themeChoice);if(!$("mushafPageView").hidden)openMushafPage(activeMushafPage,selectedVerseKey);}));
