@@ -17,7 +17,7 @@ async function loadSurah(){const n=$('surahSelect').value;if(!n)return;const out
 }));localStorage.setItem('rattil-last-surah',n);}catch(e){out.className='empty';out.textContent='تعذر تحميل السورة أو التفسير. حاول مرة أخرى عند توفر الإنترنت.';}}
 $('loadSurah').addEventListener('click',loadSurah);
 $('savePlan').addEventListener('click',()=>{const p={surah:+$('memorizeSurah').value,from:+$('memorizeFrom').value,to:+$('memorizeTo').value};if(!p.surah||p.from<1||p.to<p.from){$('planStatus').textContent='راجع أرقام السورة والآيات.';return;}localStorage.setItem('rattil-plan',JSON.stringify(p));$('planStatus').textContent='تم حفظ خطة الحفظ على هذا الجهاز. السورة '+p.surah+'، من الآية '+p.from+' إلى '+p.to+'.';});
-const BOOKMARKS_KEY='rattil-bookmark-legacys-v1';
+const BOOKMARKS_KEY='rattil-bookmarks-v1';
 function getBookmarks(){
  try{
   const saved=JSON.parse(localStorage.getItem(BOOKMARKS_KEY)||'[]');
