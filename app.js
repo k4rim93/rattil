@@ -60,7 +60,45 @@ function renderReaderSurahIndex(filter=""){const host=$("readerSurahList");host.
 $("readerSurahSearch").addEventListener("input",e=>renderReaderSurahIndex(e.target.value));
 $("closeReaderIndex").onclick=()=>$("readerIndexPanel").hidden=true;
 function opt(s){return '<option value="'+s.number+'">'+s.number+'. '+s.name+' — '+s.englishName+'</option>';}
-function populateReciteSurahs(){const el=$('reciteSurahSelect');if(!el||!surahCatalog.length)return;const selected=el.value;el.innerHTML=surahCatalog.map(opt).join('');el.value=selected&&surahCatalog.some(s=>String(s.number)===selected)?selected:'1';}
+function populateReciteSurahs(){
+ const host=$('reciteSurahIndexList');if(!host||!surahCatalog.length)return;
+ const filter=$('reciteSurahSearchInput')?.value||'';
+ host.replaceChildren();
+ surahCatalog.filter(s=>(s.name+' '+s.number+' '+s.englishName).toLowerCase().includes(filter.toLowerCase())).forEach(s=>{
+  const b=document.createElement('button');b.type='button';b.className='recite-surah-index-item';
+  const n=document.createElement('span');n.className='surah-index-number';n.textContent=s.number;
+  const label=document.createElement('span');const title=document.createElement('strong');title.textContent=s.name;const meta=document.createElement('small');meta.textContent=s.numberOfAyahs+' آية';label.append(title,meta);b.append(n,label);
+  b.addEventListener('click',()=>openRecitationSurah(s));host.append(b);
+ });
+}
+async function openRecitationSurah(s){
+ const host=$('liveRecitationText');$('reciteIndexPanel').hidden=true;$('reciteReaderPanel').hidden=false;
+ $('reciteCurrentSurahName').textContent=s.name;$('reciteCurrentSurahMeta').textContent=s.numberOfAyahs+' آية';
+ $('reciteBottomStatus').textContent='تحميل آيات '+s.name+'…';
+ host.replaceChildren();host.textContent='جارٍ تحميل الآيات…';
+ try{
+  if(!surahDataCache.has(s.number))surahDataCache.set(s.number,json(API+'/surah/'+s.number+'/quran-uthmani'));
+  const data=await surahDataCache.get(s.number);
+  if(Number($('reciteSurahSelect')?.value)!==s.number&&$('reciteSurahSelect'))$('reciteSurahSelect').value=String(s.number);
+  if(asrWorker)asrWorker.postMessage({type:'set_surah',surah:s.number});
+  host.replaceChildren();
+  data.ayahs.forEach(a=>{
+   const article=document.createElement('article');article.className='recite-ayah';article.dataset.recitationAyah=s.number+':'+a.numberInSurah;
+   const heading=document.createElement('div');heading.className='recite-ayah-heading';
+   const marker=document.createElement('span');marker.className='recite-ayah-number';marker.textContent=a.numberInSurah;
+   heading.append(marker);
+   const text=document.createElement('span');text.className='recite-ayah-text';
+   String(a.text||'').split(/\\s+/).filter(Boolean).forEach((word,i)=>{const span=document.createElement('span');span.className='recite-word unattempted';span.textContent=word+' ';span.dataset.wordIndex=i;text.append(span);});
+   article.append(heading,text);host.append(article);
+  });
+  $('reciteBottomStatus').textContent='جاهز للتسميع · '+s.name;
+  $('asrResult').textContent='ابدأ القراءة، وسيتم تمييز الآية والكلمات التي يتعرف عليها المحرك.';
+  localStorage.setItem('rattil-last-surah',String(s.number));
+ }catch(e){host.textContent='تعذر تحميل آيات السورة. تحقق من الاتصال وحاول مرة أخرى.';$('reciteBottomStatus').textContent='تعذر تحميل السورة';console.error(e);}
+}
+$('reciteSurahSearchInput').addEventListener('input',populateReciteSurahs);
+$('reciteBackToIndex').addEventListener('click',()=>{$('reciteReaderPanel').hidden=true;$('reciteIndexPanel').hidden=false;});
+
 async function loadChapters(){try{const list=await json(API+'/surah');if(!Array.isArray(list)||list.length!==114)throw Error("Expected all 114 surahs");surahCatalog=list;['surahSelect','memorizeSurah'].forEach(id=>$(id).innerHTML=list.map(opt).join(''));$('surahMeta').textContent='114 سورة • النص بالرسم العثماني';return list;}catch(e){$('quranContent').textContent='تعذر تحميل قائمة السور كاملة. تحقق من الاتصال ثم أعد المحاولة.';throw e;}}
 async function loadSurah(){const n=$('surahSelect').value;if(!n)return;const out=$('quranContent');out.className='empty';out.textContent='جارٍ تحميل السورة…';try{const [textVerses,tafsirVerses]=await Promise.all([json(API+'/surah/'+n+'/quran-uthmani'),json(API+'/surah/'+n+'/ar.muyassar').catch(()=>null)]);out.className='';$('surahMeta').textContent=textVerses.name+' • '+textVerses.englishName+' • '+textVerses.numberOfAyahs+' آية';out.innerHTML=textVerses.ayahs.map((a,i)=>{const taf=tafsirVerses?.ayahs?.[i]?.text;return '<article class="ayah"><div class="ayahText" role="button" tabindex="0" data-open-page="'+(a.page||1)+'" data-verse-key="'+n+':'+a.numberInSurah+'">'+a.text+' <span class="ayahNum">'+a.numberInSurah+'</span></div><div class="ayahActions"><button type="button" data-tafsir="'+i+'">التفسير الميسر</button><button type="button" data-bookmark="'+a.number+'">حفظ علامة</button></div><div class="verseTafsir" id="tafsir-'+i+'" hidden>'+(taf?taf.replace(/</g,'&lt;'):'التفسير الميسر غير متاح حاليًا لهذه الآية من المصدر.')+'</div></article>';}).join('');out.querySelectorAll('[data-tafsir]').forEach(b=>b.addEventListener('click',()=>{const el=$('tafsir-'+b.dataset.tafsir);el.hidden=!el.hidden;}));out.querySelectorAll('[data-open-page]').forEach(el=>{const go=()=>openMushafPage(el.dataset.openPage,el.dataset.verseKey);el.onclick=go;el.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();go();}};});out.querySelectorAll('[data-bookmark]').forEach(b=>b.addEventListener('click',()=>{
  const globalAyah=+b.dataset.bookmark,localAyah=+b.closest('.ayah').querySelector('.ayahNum').textContent;
@@ -151,21 +189,21 @@ loadChapters().then(populateReciteSurahs);renderBookmarks();stats();
 // Local-only streaming ASR. ONNX runs in a dedicated module worker.
 function asrStatus(s){$('asrStatus').textContent=s;}
 function renderLiveVerse(msg){
- const host=$('liveRecitationText'); if(!host)return;
+ const host=$('liveRecitationText');if(!host)return;
  if(msg.type==='verse_match'){
   liveCurrentVerse={surah:msg.surah,ayah:msg.ayah,text:msg.verse_text||''};
-  host.replaceChildren();
-  const title=document.createElement('strong');title.className='live-verse-title';
-  title.textContent=(msg.surah_name||('سورة '+msg.surah))+' · الآية '+msg.ayah;
-  host.append(title,document.createElement('br'));
-  String(msg.verse_text||'').split(/\\s+/).filter(Boolean).forEach((word,i)=>{
-   const span=document.createElement('span');span.className='rec-word unattempted';span.textContent=word+' ';span.dataset.wordIndex=i;host.append(span);
-  });
-  $('asrResult').textContent='تم تحديد موضع التلاوة · '+title.textContent+' · '+(Number.isFinite(msg.confidence)?Math.round(msg.confidence*100)+'٪ ثقة':'');
+  host.querySelectorAll('.recite-ayah.active').forEach(el=>el.classList.remove('active'));
+  const verse=host.querySelector('[data-recitation-ayah="'+msg.surah+':'+msg.ayah+'"]');
+  if(verse){verse.classList.add('active');verse.scrollIntoView({behavior:'smooth',block:'center'});}
+  const title=(msg.surah_name||('سورة '+msg.surah))+' · الآية '+msg.ayah;
+  $('asrResult').textContent='تم التعرف على موضع التلاوة · '+title+' · '+(Number.isFinite(msg.confidence)?Math.round(msg.confidence*100)+'٪ ثقة':'');
+  $('reciteBottomStatus').textContent=title;
+  $('reciteLiveIndicator').textContent='● يستمع';
   localStorage.setItem('rattil-last-recitation',JSON.stringify({surah:msg.surah,ayah:msg.ayah,at:Date.now()}));
- } else if(msg.type==='word_progress'&&liveCurrentVerse&&msg.surah===liveCurrentVerse.surah&&msg.ayah===liveCurrentVerse.ayah){
+ }else if(msg.type==='word_progress'&&liveCurrentVerse&&msg.surah===liveCurrentVerse.surah&&msg.ayah===liveCurrentVerse.ayah){
   const indices=Array.isArray(msg.matched_indices)?msg.matched_indices:[];
-  const words=host.querySelectorAll('[data-word-index]');
+  const verse=host.querySelector('[data-recitation-ayah="'+msg.surah+':'+msg.ayah+'"]');
+  const words=verse?.querySelectorAll('[data-word-index]')||[];
   words.forEach((el,i)=>{el.classList.toggle('correct',indices.includes(i));el.classList.toggle('unattempted',!indices.includes(i));});
  }
 }
@@ -224,7 +262,7 @@ async function startRecording(){
   };
   liveSource.connect(liveProcessor);liveProcessor.connect(liveAudioContext.destination);
   $('startRec').disabled=true;$('stopRec').disabled=false;$('reciteSurahSelect').disabled=true;
-  asrStatus('التسميع المباشر يعمل على الجهاز — الصوت لا يغادر الآيفون.');
+  asrStatus('التسميع المباشر يعمل على الجهاز — الصوت لا يغادر الآيفون.');$('reciteBottomStatus').textContent='جاري الاستماع إلى تلاوتك…';$('reciteLiveIndicator').textContent='● يستمع';
  }catch(e){asrStatus('تعذر فتح الميكروفون: '+(e.message||'تحقق من الإذن.'));await stopLiveRecording();}
 }
 async function stopLiveRecording(){
@@ -237,9 +275,9 @@ async function stopLiveRecording(){
  liveProcessor=liveSource=liveMediaStream=liveAudioContext=null;
  if(asrWorker&&asrReady)asrWorker.postMessage({type:'stop'});
  $('startRec').disabled=!asrReady;$('stopRec').disabled=true;$('reciteSurahSelect').disabled=false;
- asrStatus('تم إيقاف التسميع. الصوت لم يغادر جهازك.');
+ asrStatus('تم إيقاف التسميع. الصوت لم يغادر جهازك.');$('reciteBottomStatus').textContent='تم إيقاف التسميع';$('reciteLiveIndicator').textContent='● جاهز';
 }
-$('toggleReciteText').addEventListener('click',()=>{const h=$('liveRecitationText'),hidden=h.classList.toggle('is-hidden'),b=$('toggleReciteText');b.textContent=hidden?'إظهار النص':'إخفاء النص';b.setAttribute('aria-pressed',String(hidden));});
+$('toggleReciteText').addEventListener('click',()=>{const h=$('liveRecitationText'),hidden=h.classList.toggle('is-hidden'),b=$('toggleReciteText');b.textContent=hidden?'إظهار الآيات':'إخفاء الآيات';b.setAttribute('aria-pressed',String(hidden));});
 $('reciteSurahSelect').addEventListener('change',()=>{if(asrWorker)asrWorker.postMessage({type:'set_surah',surah:Number($('reciteSurahSelect').value)||0});});
 $('startRec').addEventListener('click',startRecording);
 $('stopRec').addEventListener('click',stopLiveRecording);
