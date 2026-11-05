@@ -14,6 +14,16 @@ try{
  const failed=[];page.on("response",r=>{if(r.url().includes("/rattil/")&&r.status()>=400)failed.push({status:r.status(),url:r.url()});});
  await page.goto("http://127.0.0.1:4173/rattil/",{waitUntil:"networkidle"});
  if(!(await page.locator("title").innerText()).includes("رَتِّل"))throw Error("Rattil page title missing at /rattil/");
+ await page.locator('#homeView').waitFor({state:"visible"});
+ if(!(await page.locator('.rattil-feature').count()===4))throw Error("Home feature tiles missing");
+ await page.locator('[data-navigate="qibla"]').click();
+ if(!(await page.locator('#qiblaView').isVisible()))throw Error("Qibla screen did not open");
+ await page.locator('#qiblaView [data-home]').click();
+ await page.locator('[data-navigate="adhkar"]').click();
+ if(!(await page.locator('#adhkarView').isVisible()))throw Error("Adhkar screen did not open");
+ await page.locator('#adhkarCounter').click();
+ if((await page.locator('#adhkarCount').innerText())!=="1")throw Error("Adhkar counter did not increment");
+ await page.locator('#adhkarView [data-home]').click();
  await page.locator('[data-navigate="recite"]').click();await page.locator(".recite-surah-index-item").first().click();
  await page.waitForSelector("#liveRecitationText .recite-ayah",{timeout:30000});
  await page.locator("#loadAsr").click();
