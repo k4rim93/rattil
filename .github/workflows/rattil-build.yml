@@ -29,4 +29,11 @@ jobs:
           test -s dist/models/zipformer_a0w_ep1_a05.io.json
           test -s dist/zipformer_quran.json
           test -s dist/quran.json
-          ! grep -R "cdn.jsdelivr.net/npm/onnxruntime-web\|cdn.jsdelivr.net/npm/@tilawa/core" dist
+          ! grep -R "cdn.jsdelivr.net/npm/onnxruntime-web\\|cdn.jsdelivr.net/npm/@tilawa/core" dist
+      - name: Upload deployable preview build
+        uses: actions/upload-artifact@v4
+        with:
+          name: rattil-preview-dist
+          path: dist/
+          if-no-files-found: error
+          retention-days: 3
