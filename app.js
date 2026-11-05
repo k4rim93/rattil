@@ -2,7 +2,7 @@
 const API='https://api.alquran.cloud/v1', $=id=>document.getElementById(id);
 const views={mushaf:'mushafView',memorize:'memorizeView',recite:'reciteView',achievements:'achievementsView',settings:'settingsView'};
 // ASR state is initialized before any UI event can invoke its handlers.
-let asrWorker=null,asrReady=false,liveAudioContext=null,liveMediaStream=null,liveSource=null,liveProcessor=null,liveSamples=new Float32Array(0),liveLastVerse=null,liveCurrentVerse=null;
+let asrWorker=null,asrReady=false,activeReciteSurah=0,liveAudioContext=null,liveMediaStream=null,liveSource=null,liveProcessor=null,liveSamples=new Float32Array(0),liveLastVerse=null,liveCurrentVerse=null;
 $('loadAsr').addEventListener('click',loadAsr);
 let currentScreen='home';
 function renderScreen(name){
@@ -79,7 +79,7 @@ async function openRecitationSurah(s){
  try{
   if(!surahDataCache.has(s.number))surahDataCache.set(s.number,json(API+'/surah/'+s.number+'/quran-uthmani'));
   const data=await surahDataCache.get(s.number);
-  if(Number($('reciteSurahSelect')?.value)!==s.number&&$('reciteSurahSelect'))$('reciteSurahSelect').value=String(s.number);
+  activeReciteSurah=s.number;$('startRec').disabled=!asrReady;
   if(asrWorker)asrWorker.postMessage({type:'set_surah',surah:s.number});
   host.replaceChildren();
   data.ayahs.forEach(a=>{
@@ -217,7 +217,7 @@ async function loadAsr(){
    const m=e.data||{};
    if(m.type==='loading_status')asrStatus(m.message);
    else if(m.type==='loading')asrStatus('تنزيل نموذج التسميع لأول مرة… '+(m.percent||0)+'٪');
-   else if(m.type==='ready'){asrReady=true;$('startRec').disabled=false;btn.disabled=true;asrStatus('محرك التسميع جاهز — النموذج محفوظ محليًا بعد اكتمال التنزيل.');}
+   else if(m.type==='ready'){asrReady=true;$('startRec').disabled=!activeReciteSurah;btn.disabled=true;asrStatus('محرك التسميع جاهز — النموذج محفوظ محليًا بعد اكتمال التنزيل.');}
    else if(m.type==='error'){asrStatus('تعذر تشغيل محرك التسميع: '+m.message);btn.disabled=false;}
    else if(m.type==='event')renderLiveVerse(m.event);
   };
@@ -246,7 +246,7 @@ function sendAudioChunk(samples){
  const copy=samples.slice();asrWorker.postMessage({type:'audio',samples:copy},[copy.buffer]);
 }
 async function startRecording(){
- if(!asrReady||!asrWorker){asrStatus('حمّل محرك التسميع أولًا.');return;}
+ if(!activeReciteSurah){asrStatus('اختر سورة من الفهرس أولًا.');return;}\n if(!asrReady||!asrWorker){asrStatus('حمّل محرك التسميع أولًا.');return;}
  if(!navigator.mediaDevices?.getUserMedia||(!window.AudioContext&&!window.webkitAudioContext)){asrStatus('المتصفح لا يدعم الميكروفون. افتح رَتِّل من Safari على HTTPS.');return;}
  try{
   liveMediaStream=await navigator.mediaDevices.getUserMedia({audio:{channelCount:1,echoCancellation:false,noiseSuppression:false,autoGainControl:false}});
@@ -261,7 +261,7 @@ async function startRecording(){
    while(liveSamples.length>=4800){sendAudioChunk(liveSamples.subarray(0,4800));liveSamples=liveSamples.slice(4800);}
   };
   liveSource.connect(liveProcessor);liveProcessor.connect(liveAudioContext.destination);
-  $('startRec').disabled=true;$('stopRec').disabled=false;$('reciteSurahSelect').disabled=true;
+  $('startRec').disabled=true;$('stopRec').disabled=false;
   asrStatus('التسميع المباشر يعمل على الجهاز — الصوت لا يغادر الآيفون.');$('reciteBottomStatus').textContent='جاري الاستماع إلى تلاوتك…';$('reciteLiveIndicator').textContent='● يستمع';
  }catch(e){asrStatus('تعذر فتح الميكروفون: '+(e.message||'تحقق من الإذن.'));await stopLiveRecording();}
 }
@@ -274,11 +274,11 @@ async function stopLiveRecording(){
  if(liveAudioContext){try{await liveAudioContext.close();}catch(e){}}
  liveProcessor=liveSource=liveMediaStream=liveAudioContext=null;
  if(asrWorker&&asrReady)asrWorker.postMessage({type:'stop'});
- $('startRec').disabled=!asrReady;$('stopRec').disabled=true;$('reciteSurahSelect').disabled=false;
+ $('startRec').disabled=!asrReady||!activeReciteSurah;$('stopRec').disabled=true;
  asrStatus('تم إيقاف التسميع. الصوت لم يغادر جهازك.');$('reciteBottomStatus').textContent='تم إيقاف التسميع';$('reciteLiveIndicator').textContent='● جاهز';
 }
 $('toggleReciteText').addEventListener('click',()=>{const h=$('liveRecitationText'),hidden=h.classList.toggle('is-hidden'),b=$('toggleReciteText');b.textContent=hidden?'إظهار الآيات':'إخفاء الآيات';b.setAttribute('aria-pressed',String(hidden));});
-$('reciteSurahSelect').addEventListener('change',()=>{if(asrWorker)asrWorker.postMessage({type:'set_surah',surah:Number($('reciteSurahSelect').value)||0});});
+
 $('startRec').addEventListener('click',startRecording);
 $('stopRec').addEventListener('click',stopLiveRecording);
 
