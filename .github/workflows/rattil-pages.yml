@@ -29,7 +29,7 @@ jobs:
       - name: Verify GitHub Pages paths and local ASR assets
         run: |
           test -s dist/index.html
-          test -s dist/rattil/app.js || test -s dist/app.js
+          test -n "$(find dist/assets -maxdepth 1 -name '*.js' -print -quit)"
           test -s dist/ort/ort-wasm-simd-threaded.wasm
           test -s dist/ort/ort-wasm-simd-threaded.mjs
           test -s dist/models/zipformer_a0w_ep1_a05.int8.onnx
