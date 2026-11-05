@@ -1,10 +1,21 @@
 (() => {
 const API='https://api.alquran.cloud/v1', $=id=>document.getElementById(id);
-const views={mushaf:'mushafView',memorize:'memorizeView',recite:'reciteView',achievements:'achievementsView',settings:'settingsView'};
+const views={mushaf:'mushafView',memorize:'memorizeView',recite:'reciteView',achievements:'achievementsView',settings:'settingsView',qibla:'qiblaView',adhkar:'adhkarView'};
 // ASR state is initialized before any UI event can invoke its handlers.
 let asrWorker=null,asrReady=false,activeReciteSurah=0,liveAudioContext=null,liveMediaStream=null,liveSource=null,liveProcessor=null,liveSamples=new Float32Array(0),liveLastVerse=null,liveCurrentVerse=null;
 $('loadAsr').addEventListener('click',loadAsr);
 let currentScreen='home';
+
+function updateRattilSky(){
+ const h=new Date().getHours(),b=document.body;
+ b.classList.remove('sky-dawn','sky-day','sky-sunset','sky-night');
+ const phase=h>=5&&h<8?'sky-dawn':h>=8&&h<16?'sky-day':h>=16&&h<19?'sky-sunset':'sky-night';
+ b.classList.add(phase);
+ const greeting=$('rattilGreetingDate');
+ if(greeting)greeting.textContent=new Intl.DateTimeFormat('ar-EG',{weekday:'long',day:'numeric',month:'long'}).format(new Date());
+}
+updateRattilSky();setInterval(updateRattilSky,60000);
+
 function renderScreen(name){
  currentScreen=views[name]?name:'home';
  const isHome=currentScreen==='home';
