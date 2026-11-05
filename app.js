@@ -144,82 +144,102 @@ loadChapters().then(populateReciteSurahs);renderBookmarks();stats();
  loadPrayerTimes();prayerTick=setInterval(updatePrayerCountdown,1000);
 
 
-// Local-only ASR: microphone recording -> 16 kHz mono -> ONNX -> conservative Quran matcher.
-const MODEL='https://huggingface.co/muhdur/tilawi-fastconformer-quran/resolve/main/fastconformer_full_mixed.onnx';
-const ASSETS='https://huggingface.co/muhdur/tilawi-fastconformer-quran/resolve/main/';
-const ASR_DB='rattil-asr-assets',ASR_DB_VERSION=1,ASR_MODEL_KEY='tilawi-fastconformer-quran-v1';
-let asrSession=null,ort=null,recorder=null,stream=null,chunks=[],assets=null;
+// Local-only streaming ASR. ONNX runs in a dedicated module worker.
+let asrWorker=null,asrReady=false,liveAudioContext=null,liveMediaStream=null,liveSource=null,liveProcessor=null,liveSamples=new Float32Array(0),liveLastVerse=null,liveCurrentVerse=null;
 function asrStatus(s){$('asrStatus').textContent=s;}
-function openAsrDb(){return new Promise((resolve,reject)=>{if(!('indexedDB'in window))return reject(Error('التخزين المحلي غير مدعوم في هذا المتصفح'));const req=indexedDB.open(ASR_DB,ASR_DB_VERSION);req.onupgradeneeded=()=>{if(!req.result.objectStoreNames.contains('files'))req.result.createObjectStore('files');};req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error||Error('تعذر فتح التخزين المحلي'));});}
-async function asrDbGet(key){const db=await openAsrDb();return new Promise((resolve,reject)=>{const tx=db.transaction('files','readonly'),req=tx.objectStore('files').get(key);req.onsuccess=()=>resolve(req.result??null);req.onerror=()=>reject(req.error);tx.oncomplete=()=>db.close();tx.onerror=()=>{db.close();reject(tx.error);};});}
-async function asrDbPut(key,value){const db=await openAsrDb();return new Promise((resolve,reject)=>{const tx=db.transaction('files','readwrite');tx.objectStore('files').put(value,key);tx.oncomplete=()=>{db.close();resolve(true);};tx.onerror=()=>{const e=tx.error;db.close();reject(e||Error('تعذر حفظ ملفات التسميع'));};tx.onabort=()=>{const e=tx.error;db.close();reject(e||Error('تم إلغاء حفظ ملفات التسميع'));};});}
-async function asrDbDelete(){const db=await openAsrDb();return new Promise((resolve,reject)=>{const tx=db.transaction('files','readwrite');tx.objectStore('files').clear();tx.oncomplete=()=>{db.close();resolve(true);};tx.onerror=()=>{const e=tx.error;db.close();reject(e);};});}
-async function fetchAsrFile(url,type){const r=await fetch(url);if(!r.ok)throw Error('تعذر تنزيل ملف مساعد: '+r.status);return type==='json'?r.json():r.arrayBuffer();}
-async function getAsrAssets(){
- const keys=['vocab','tokens','quran'],urls=[ASSETS+'vocab.json',ASSETS+'quran_ctc_tokens.json',ASSETS+'quran.json'];
- const cached=await Promise.all(keys.map(k=>asrDbGet(k).catch(()=>null)));
- const missing=keys.map((k,i)=>cached[i]===null?i:-1).filter(i=>i>=0);
- if(missing.length){asrStatus('تنزيل ملفات القرآن المساعدة…');const values=await Promise.all(missing.map(i=>fetchAsrFile(urls[i],'json')));await Promise.all(missing.map((i,j)=>asrDbPut(keys[i],values[j]).catch(e=>console.warn('Could not persist ASR helper',keys[i],e))));missing.forEach((i,j)=>cached[i]=values[j]);}
- return {vocab:cached[0],tokens:cached[1],quran:cached[2]};
+function renderLiveVerse(msg){
+ const host=$('liveRecitationText'); if(!host)return;
+ if(msg.type==='verse_match'){
+  liveCurrentVerse={surah:msg.surah,ayah:msg.ayah,text:msg.verse_text||''};
+  host.replaceChildren();
+  const title=document.createElement('strong');title.className='live-verse-title';
+  title.textContent=(msg.surah_name||('سورة '+msg.surah))+' · الآية '+msg.ayah;
+  host.append(title,document.createElement('br'));
+  String(msg.verse_text||'').split(/\\s+/).filter(Boolean).forEach((word,i)=>{
+   const span=document.createElement('span');span.className='rec-word unattempted';span.textContent=word+' ';span.dataset.wordIndex=i;host.append(span);
+  });
+  $('asrResult').textContent='تم تحديد موضع التلاوة · '+title.textContent+' · '+(Number.isFinite(msg.confidence)?Math.round(msg.confidence*100)+'٪ ثقة':'');
+  localStorage.setItem('rattil-last-recitation',JSON.stringify({surah:msg.surah,ayah:msg.ayah,at:Date.now()}));
+ } else if(msg.type==='word_progress'&&liveCurrentVerse&&msg.surah===liveCurrentVerse.surah&&msg.ayah===liveCurrentVerse.ayah){
+  const indices=Array.isArray(msg.matched_indices)?msg.matched_indices:[];
+  const words=host.querySelectorAll('[data-word-index]');
+  words.forEach((el,i)=>{el.classList.toggle('correct',indices.includes(i));el.classList.toggle('unattempted',!indices.includes(i));});
+ }
 }
-async function getAsrModel(){
- let model=await asrDbGet(ASR_MODEL_KEY).catch(()=>null);
- if(model instanceof ArrayBuffer&&model.byteLength>0){asrStatus('النموذج موجود على الجهاز — لا حاجة لإعادة تنزيله.');return model;}
- asrStatus('تنزيل نموذج التسميع لأول مرة (حوالي 100 ميجابايت)…');
- model=await fetchAsrFile(MODEL,'buffer');
- try{await asrDbPut(ASR_MODEL_KEY,model);asrStatus('تم تنزيل النموذج وحفظه على الجهاز.');}
- catch(e){console.warn('ASR model persistence failed',e);asrStatus('تم التنزيل، لكن المتصفح لم يسمح بحفظ النموذج بشكل دائم؛ قد تحتاج لإعادة تنزيله لاحقًا.');}
- return model;
-}
-async function refreshAsrStorageStatus(){try{const model=await asrDbGet(ASR_MODEL_KEY);const b=$('clearAsrCache');if(b)b.disabled=!(model instanceof ArrayBuffer);if(model instanceof ArrayBuffer)asrStatus('نموذج التسميع محفوظ على الجهاز ('+(model.byteLength/1048576).toFixed(0)+' ميجابايت).');}catch(e){console.warn('ASR storage check failed',e);}}
-async function clearAsrStorage(){if(asrSession){asrStatus('أغلق محرك التسميع أولًا بإعادة تحميل الصفحة قبل حذف النموذج.');return;}const b=$('clearAsrCache');b.disabled=true;try{await asrDbDelete();asrStatus('تم حذف ملفات التسميع المحفوظة من هذا الجهاز.');}catch(e){asrStatus('تعذر حذف الملفات: '+(e.message||e));b.disabled=false;}}
+function stopWorker(){if(asrWorker){asrWorker.terminate();asrWorker=null;}asrReady=false;}
 async function loadAsr(){
- const btn=$('loadAsr');btn.disabled=true;let loadingStep='تحميل مكتبة ONNX Runtime';
+ const btn=$('loadAsr');btn.disabled=true;asrStatus('تشغيل محرك التسميع…');
  try{
-  asrStatus('تحميل مكتبة تشغيل النموذج…');
-  ort=await import('https://cdn.jsdelivr.net/npm/onnxruntime-web@1.23.2/dist/ort.min.mjs');
-  ort.env.wasm.wasmPaths='https://cdn.jsdelivr.net/npm/onnxruntime-web@1.23.2/dist/';
-  ort.env.wasm.numThreads=1;
-  loadingStep='تحميل مكتبة مطابقة الآيات';
-  const core=await import('https://cdn.jsdelivr.net/npm/@tilawi/quran-asr@0.1.0/+esm');
-  loadingStep='تحميل نموذج التسميع وملفات القرآن';
-  const [model,files]=await Promise.all([getAsrModel(),getAsrAssets()]);
-  if(navigator.storage?.persist){try{await navigator.storage.persist();}catch(e){console.info('Persistent storage request unavailable',e);}}
-  loadingStep='تشغيل محرك WebAssembly';
-  asrStatus('تهيئة النموذج المحفوظ على الجهاز…');
-  const session=await ort.InferenceSession.create(model,{executionProviders:['wasm'],graphOptimizationLevel:'all'});
-  const audioName=session.inputNames.find(n=>/audio|signal|input/i.test(n))||session.inputNames[0];
-  const lengthName=session.inputNames.find(n=>/len/i.test(n))||session.inputNames[1];
-  const outputName=session.outputNames[0];
-  const runner={async run(audio){
-   const input=new ort.Tensor('float32',audio,[1,audio.length]);
-   const length=new ort.Tensor('int64',BigInt64Array.from([BigInt(audio.length)]),[1]);
-   const result=await session.run({[audioName]:input,[lengthName]:length});
-   const out=result[outputName],dims=out.dims;
-   return {logprobs:out.data,timeSteps:Number(dims[dims.length-2]),vocabSize:Number(dims[dims.length-1])};
-  }};
-  loadingStep='تهيئة نموذج التعرف على التلاوة';
-  asrSession=core.createAsrSession(runner,{vocab:files.vocab,quranCtcTokens:files.tokens,quran:files.quran,blankId:1024});
-  assets={quran:files.quran,judgeAttempt:core.judgeAttempt};
-  $('startRec').disabled=false;
-  btn.disabled=true;
-  const size=(model.byteLength/1048576).toFixed(0);
-  asrStatus('محرك التسميع جاهز. النموذج محفوظ على الجهاز ('+size+' ميجابايت) — المرة القادمة لن تحتاج تنزيله.');
-  await refreshAsrStorageStatus();
- }catch(e){console.error('Rattil ASR load failed at: '+loadingStep,e);asrStatus('فشل '+loadingStep+': '+(e?.message||'خطأ غير معروف')+'. جرّب شبكة مستقرة ثم أعد المحاولة.');btn.disabled=false;}
+  stopWorker();
+  asrWorker=new Worker('./asr-worker.js?v=zipformer-a0w-v1',{type:'module'});
+  asrWorker.onmessage=e=>{
+   const m=e.data||{};
+   if(m.type==='loading_status')asrStatus(m.message);
+   else if(m.type==='loading')asrStatus('تنزيل نموذج التسميع لأول مرة… '+(m.percent||0)+'٪');
+   else if(m.type==='ready'){asrReady=true;$('startRec').disabled=false;btn.disabled=true;asrStatus('محرك التسميع جاهز — النموذج محفوظ محليًا بعد اكتمال التنزيل.');}
+   else if(m.type==='error'){asrStatus('تعذر تشغيل محرك التسميع: '+m.message);btn.disabled=false;}
+   else if(m.type==='event')renderLiveVerse(m.event);
+  };
+  asrWorker.onerror=e=>{console.error('Rattil ASR worker error',e);asrStatus('حدث خطأ داخل محرك التسميع. أعد المحاولة.');btn.disabled=false;};
+  asrWorker.postMessage({type:'init'});
+ }catch(e){console.error(e);asrStatus('تعذر بدء محرك التسميع: '+(e.message||e));btn.disabled=false;}
 }
-$('loadAsr').addEventListener('click',loadAsr);$('clearAsrCache').addEventListener('click',clearAsrStorage);refreshAsrStorageStatus();
-let liveAudioContext=null,liveMediaStream=null,liveSource=null,liveProcessor=null,liveSamples=[],liveSampleCount=0,lastLiveInference=0,liveInferenceBusy=false,liveExpectedSurah=0,liveLastVerse=0,liveWordStates=[];
-const LIVE_WINDOW_SECONDS=8,LIVE_HOP_SECONDS=2.5;
-function populateReciteSurahs(){const s=$('reciteSurahSelect');if(!s||!surahCatalog.length)return;s.replaceChildren();surahCatalog.forEach(ch=>{const o=document.createElement('option');o.value=ch.number;o.textContent=ch.number+' — '+ch.name;s.append(o);});}
-function renderLiveVerse(verse,judged){const host=$('liveRecitationText');host.replaceChildren();const title=document.createElement('strong');title.className='live-verse-title';title.textContent=verse.surahName+' · الآية '+verse.ayah;host.append(title,document.createElement('br'));const statuses=new Map((judged?.words||[]).filter(w=>w.expectedIndex!=null).map(w=>[w.expectedIndex,w.judgment]));const words=String(verse.text).split(/\s+/).filter(Boolean);words.forEach((word,i)=>{const span=document.createElement('span');span.className='rec-word '+(({correct:'correct','apparent-error':'error',uncertain:'uncertain',unattempted:'unattempted'})[statuses.get(i)]||'unattempted');span.textContent=word+' ';span.dataset.wordIndex=i;host.append(span);});if(!host.classList.contains('is-hidden')){const attempted=(judged?.words||[]).filter(w=>w.expectedIndex!=null&&['correct','apparent-error','uncertain'].includes(w.judgment)).sort((a,b)=>b.expectedIndex-a.expectedIndex)[0];const current=attempted?host.querySelector('[data-word-index="'+attempted.expectedIndex+'"]'):null;current?.scrollIntoView({block:'nearest',behavior:'smooth'});}}
-function resampleTo16k(input,rate){if(rate===16000)return input.slice();const outLength=Math.floor(input.length*16000/rate),out=new Float32Array(outLength),ratio=rate/16000;for(let i=0;i<outLength;i++){const p=i*ratio,l=Math.floor(p),f=p-l;out[i]=(input[l]||0)*(1-f)+(input[Math.min(l+1,input.length-1)]||0)*f;}return out;}
-function appendLiveSamples(data){const next=resampleTo16k(data,liveAudioContext.sampleRate);for(let i=0;i<next.length;i++)liveSamples.push(next[i]);const max=16000*LIVE_WINDOW_SECONDS*2;if(liveSamples.length>max)liveSamples.splice(0,liveSamples.length-max);liveSampleCount+=next.length;}
-async function processLiveWindow(){if(liveInferenceBusy||!asrSession||liveSamples.length<16000*3)return;liveInferenceBusy=true;try{const audio=Float32Array.from(liveSamples.slice(-16000*LIVE_WINDOW_SECONDS));const result=await asrSession.transcribe(audio);if(!result.surah||!result.ayah||!result.transcript)return;const verse=assets.quran.find(v=>Number(v.surah)===result.surah&&Number(v.ayah)===result.ayah);if(!verse)return;const expected=String(verse.text_uthmani||verse.text||'').split(/\s+/).filter(Boolean);const heard=String(result.transcript).split(/\s+/).filter(Boolean);const judged=assets.judgeAttempt(expected,heard);const name=surahCatalog.find(s=>s.number===result.surah)?.name||('سورة '+result.surah);renderLiveVerse({surahName:name,ayah:result.ayah,text:verse.text_uthmani||verse.text},judged);$('asrResult').textContent='متابعة مباشرة · '+name+' · الآية '+result.ayah+' · '+Math.round(result.score*100)+'٪ ثقة في تحديد الموضع. الأحمر = اختلاف محتمل، الأصفر = غير مؤكد.';if(result.surah+':'+result.ayah!==liveLastVerse){liveLastVerse=result.surah+':'+result.ayah;localStorage.setItem('rattil-last-recitation',JSON.stringify({surah:result.surah,ayah:result.ayah,score:Math.round(result.score*100),at:Date.now()}));}}catch(e){console.warn('Live ASR window failed',e);}finally{liveInferenceBusy=false;}}
-async function startRecording(){if(!navigator.mediaDevices?.getUserMedia||!window.AudioContext&&!window.webkitAudioContext){asrStatus('المتصفح لا يدعم التقاط الصوت المباشر. افتح رَتِّل من Safari على HTTPS.');return;}try{liveMediaStream=await navigator.mediaDevices.getUserMedia({audio:{channelCount:1,echoCancellation:false,noiseSuppression:false,autoGainControl:false}});const Ctx=window.AudioContext||window.webkitAudioContext;liveAudioContext=new Ctx();await liveAudioContext.resume();liveSource=liveAudioContext.createMediaStreamSource(liveMediaStream);liveProcessor=liveAudioContext.createScriptProcessor(4096,1,1);liveSamples=[];liveSampleCount=0;lastLiveInference=0;liveLastVerse=0;liveInferenceBusy=false;liveExpectedSurah=Number($('reciteSurahSelect').value)||0;liveProcessor.onaudioprocess=e=>{if(!liveAudioContext)return;appendLiveSamples(e.inputBuffer.getChannelData(0));if(liveSampleCount-lastLiveInference>=16000*LIVE_HOP_SECONDS){lastLiveInference=liveSampleCount;processLiveWindow();}};liveSource.connect(liveProcessor);liveProcessor.connect(liveAudioContext.destination);$('startRec').disabled=true;$('stopRec').disabled=false;$('reciteSurahSelect').disabled=true;asrStatus('التسميع المباشر يعمل على الجهاز. اقرأ باستمرار؛ قد يتأخر التحديث عدة ثوانٍ حسب سرعة الآيفون.');}catch(e){asrStatus('تعذر فتح الميكروفون: '+(e?.message||'تحقق من إذن الميكروفون.'));stopLiveRecording();}}
-async function stopLiveRecording(){if(liveProcessor){liveProcessor.onaudioprocess=null;try{liveProcessor.disconnect();}catch(e){}}if(liveSource){try{liveSource.disconnect();}catch(e){}}if(liveMediaStream){liveMediaStream.getTracks().forEach(t=>t.stop());}if(liveAudioContext){try{await liveAudioContext.close();}catch(e){}}liveProcessor=liveSource=liveMediaStream=liveAudioContext=null;$('startRec').disabled=!asrSession;$('stopRec').disabled=true;$('reciteSurahSelect').disabled=false;asrStatus('تم إيقاف التسميع المباشر. الصوت لم يغادر جهازك.');}
+async function clearAsrStorage(){
+ if(liveAudioContext){asrStatus('أوقف التسميع أولًا.');return;}
+ const b=$('clearAsrCache');b.disabled=true;
+ try{const db=await new Promise((resolve,reject)=>{const q=indexedDB.open('rattil-zipformer-assets',1);q.onupgradeneeded=()=>q.result.createObjectStore('assets');q.onsuccess=()=>resolve(q.result);q.onerror=()=>reject(q.error);});
+  await new Promise((resolve,reject)=>{const tx=db.transaction('assets','readwrite');tx.objectStore('assets').clear();tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);});
+  db.close();asrStatus('تم حذف نموذج Zipformer وملفاته من هذا الجهاز.');
+ }catch(e){asrStatus('تعذر حذف الملفات: '+e.message);b.disabled=false;}
+}
+$('loadAsr').addEventListener('click',loadAsr);
+$('clearAsrCache').addEventListener('click',clearAsrStorage);
+$('clearAsrCache').disabled=false;
+function resampleTo16k(input,rate){
+ if(rate===16000)return input.slice();
+ const n=Math.floor(input.length*16000/rate),out=new Float32Array(n),ratio=rate/16000;
+ for(let i=0;i<n;i++){const p=i*ratio,l=Math.floor(p),f=p-l;out[i]=(input[l]||0)*(1-f)+(input[Math.min(l+1,input.length-1)]||0)*f;}
+ return out;
+}
+function sendAudioChunk(samples){
+ if(!asrWorker||!asrReady||!samples.length)return;
+ const copy=samples.slice();asrWorker.postMessage({type:'audio',samples:copy},[copy.buffer]);
+}
+async function startRecording(){
+ if(!asrReady||!asrWorker){asrStatus('حمّل محرك التسميع أولًا.');return;}
+ if(!navigator.mediaDevices?.getUserMedia||(!window.AudioContext&&!window.webkitAudioContext)){asrStatus('المتصفح لا يدعم الميكروفون. افتح رَتِّل من Safari على HTTPS.');return;}
+ try{
+  liveMediaStream=await navigator.mediaDevices.getUserMedia({audio:{channelCount:1,echoCancellation:false,noiseSuppression:false,autoGainControl:false}});
+  const Ctx=window.AudioContext||window.webkitAudioContext;liveAudioContext=new Ctx();await liveAudioContext.resume();
+  liveSource=liveAudioContext.createMediaStreamSource(liveMediaStream);liveProcessor=liveAudioContext.createScriptProcessor(4096,1,1);
+  liveSamples=new Float32Array(0);liveLastVerse=null;liveCurrentVerse=null;
+  asrWorker.postMessage({type:'reset'});
+  liveProcessor.onaudioprocess=e=>{
+   if(!liveAudioContext)return;
+   const next=resampleTo16k(e.inputBuffer.getChannelData(0),liveAudioContext.sampleRate);
+   const joined=new Float32Array(liveSamples.length+next.length);joined.set(liveSamples);joined.set(next,liveSamples.length);liveSamples=joined;
+   while(liveSamples.length>=4800){sendAudioChunk(liveSamples.subarray(0,4800));liveSamples=liveSamples.slice(4800);}
+  };
+  liveSource.connect(liveProcessor);liveProcessor.connect(liveAudioContext.destination);
+  $('startRec').disabled=true;$('stopRec').disabled=false;$('reciteSurahSelect').disabled=true;
+  asrStatus('التسميع المباشر يعمل على الجهاز — الصوت لا يغادر الآيفون.');
+ }catch(e){asrStatus('تعذر فتح الميكروفون: '+(e.message||'تحقق من الإذن.'));await stopLiveRecording();}
+}
+async function stopLiveRecording(){
+ if(liveProcessor){liveProcessor.onaudioprocess=null;try{liveProcessor.disconnect();}catch(e){}}
+ if(liveSource){try{liveSource.disconnect();}catch(e){}}
+ if(liveSamples.length)sendAudioChunk(liveSamples);
+ liveSamples=new Float32Array(0);
+ if(liveMediaStream)liveMediaStream.getTracks().forEach(t=>t.stop());
+ if(liveAudioContext){try{await liveAudioContext.close();}catch(e){}}
+ liveProcessor=liveSource=liveMediaStream=liveAudioContext=null;
+ if(asrWorker&&asrReady)asrWorker.postMessage({type:'stop'});
+ $('startRec').disabled=!asrReady;$('stopRec').disabled=true;$('reciteSurahSelect').disabled=false;
+ asrStatus('تم إيقاف التسميع. الصوت لم يغادر جهازك.');
+}
 $('toggleReciteText').addEventListener('click',()=>{const h=$('liveRecitationText'),hidden=h.classList.toggle('is-hidden'),b=$('toggleReciteText');b.textContent=hidden?'إظهار النص':'إخفاء النص';b.setAttribute('aria-pressed',String(hidden));});
-$('reciteSurahSelect').addEventListener('change',()=>{liveExpectedSurah=Number($('reciteSurahSelect').value)||0;});
-$('startRec').addEventListener('click',startRecording);$('stopRec').addEventListener('click',stopLiveRecording);
+$('reciteSurahSelect').addEventListener('change',()=>{if(asrWorker)asrWorker.postMessage({type:'set_surah',surah:Number($('reciteSurahSelect').value)||0});});
+$('startRec').addEventListener('click',startRecording);
+$('stopRec').addEventListener('click',stopLiveRecording);
 
 })();
