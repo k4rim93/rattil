@@ -192,7 +192,7 @@ function renderLiveVerse(msg){
   liveCurrentVerse={surah:msg.surah,ayah:msg.ayah,text:msg.verse_text||''};
   host.querySelectorAll('.recite-ayah.active').forEach(el=>el.classList.remove('active'));
   const verse=host.querySelector('[data-recitation-ayah="'+msg.surah+':'+msg.ayah+'"]');
-  if(verse){verse.classList.add('active');verse.scrollIntoView({behavior:'smooth',block:'center'});}
+  if(verse){verse.classList.add('active','revealed');verse.scrollIntoView({behavior:'smooth',block:'center'});}
   const title=(msg.surah_name||('سورة '+msg.surah))+' · الآية '+msg.ayah;
   $('asrResult').textContent='تم التعرف على موضع التلاوة · '+title+' · '+(Number.isFinite(msg.confidence)?Math.round(msg.confidence*100)+'٪ ثقة':'');
   $('reciteBottomStatus').textContent=title;
