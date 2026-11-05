@@ -1,23 +1,21 @@
-name: Rattil GitHub Pages deployment
+name: Rattil build, smoke test and Pages deploy
 on:
   push:
     branches:
-      - fix/rattil-pages-asr-paths-2026-11-05
+      - feature/rattil-programmed-home-v1
   workflow_dispatch:
 permissions:
   contents: read
-  pages: write
-  id-token: write
 concurrency:
-  group: github-pages
+  group: rattil-pages
   cancel-in-progress: true
 jobs:
-  build-test-deploy:
+  build-test:
     runs-on: ubuntu-24.04
     timeout-minutes: 45
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+    permissions:
+      contents: read
+      pages: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -48,5 +46,15 @@ jobs:
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
+  deploy:
+    needs: build-test
+    runs-on: ubuntu-24.04
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    permissions:
+      pages: write
+      id-token: write
+    steps:
       - id: deployment
         uses: actions/deploy-pages@v4
