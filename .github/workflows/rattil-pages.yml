@@ -37,7 +37,9 @@ jobs:
           test -s dist/zipformer_quran.json
           test -s dist/quran.json
           grep -q '/rattil/' dist/index.html
-          grep -q '"/rattil/"' dist/manifest.webmanifest
+          manifest_file="$(find dist -type f -name 'manifest-*.webmanifest' -print -quit)"
+          test -n "$manifest_file"
+          grep -q '"/rattil/"' "$manifest_file"
           ! grep -R "cdn.jsdelivr.net/npm/onnxruntime-web\\|cdn.jsdelivr.net/npm/@tilawa/core" dist
       - name: Install Chromium for browser smoke test
         run: npx playwright install --with-deps chromium
