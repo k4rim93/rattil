@@ -1,7 +1,8 @@
 (() => {
 const API='https://api.alquran.cloud/v1', $=id=>document.getElementById(id);
 const views={mushaf:'mushafView',memorize:'memorizeView',recite:'reciteView',achievements:'achievementsView',settings:'settingsView'};
-// Bind the ASR action before optional dashboard initialization can fail.
+// ASR state is initialized before any UI event can invoke its handlers.
+let asrWorker=null,asrReady=false,liveAudioContext=null,liveMediaStream=null,liveSource=null,liveProcessor=null,liveSamples=new Float32Array(0),liveLastVerse=null,liveCurrentVerse=null;
 $('loadAsr').addEventListener('click',loadAsr);
 let currentScreen='home';
 function renderScreen(name){
@@ -147,7 +148,6 @@ loadChapters().then(populateReciteSurahs);renderBookmarks();stats();
 
 
 // Local-only streaming ASR. ONNX runs in a dedicated module worker.
-let asrWorker=null,asrReady=false,liveAudioContext=null,liveMediaStream=null,liveSource=null,liveProcessor=null,liveSamples=new Float32Array(0),liveLastVerse=null,liveCurrentVerse=null;
 function asrStatus(s){$('asrStatus').textContent=s;}
 function renderLiveVerse(msg){
  const host=$('liveRecitationText'); if(!host)return;
