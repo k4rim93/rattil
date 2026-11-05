@@ -14,7 +14,7 @@ try{
  const failed=[];page.on("response",r=>{if(r.url().includes("/rattil/")&&r.status()>=400)failed.push({status:r.status(),url:r.url()});});
  await page.goto("http://127.0.0.1:4173/rattil/",{waitUntil:"networkidle"});
  if(!(await page.locator("title").innerText()).includes("رَتِّل"))throw Error("Rattil page title missing at /rattil/");
- await page.locator('a[href="#recite"]').click();await page.locator(".recite-surah-index-item").first().click();
+ await page.locator('[data-navigate="recite"]').click();await page.locator(".recite-surah-index-item").first().click();
  await page.waitForSelector("#liveRecitationText .recite-ayah",{timeout:30000});
  await page.locator("#loadAsr").click();
  await page.waitForFunction(()=>{const s=document.querySelector("#asrStatus")?.textContent||"";return s.includes("جاهز")||s.includes("تعذر")||s.includes("حدث خطأ");},null,{timeout:300000});
