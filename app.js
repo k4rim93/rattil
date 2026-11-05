@@ -246,7 +246,8 @@ function sendAudioChunk(samples){
  const copy=samples.slice();asrWorker.postMessage({type:'audio',samples:copy},[copy.buffer]);
 }
 async function startRecording(){
- if(!activeReciteSurah){asrStatus('اختر سورة من الفهرس أولًا.');return;}\n if(!asrReady||!asrWorker){asrStatus('حمّل محرك التسميع أولًا.');return;}
+ if(!activeReciteSurah){asrStatus('اختر سورة من الفهرس أولًا.');return}
+ if(!asrReady||!asrWorker){asrStatus('حمّل محرك التسميع أولًا.');return;}
  if(!navigator.mediaDevices?.getUserMedia||(!window.AudioContext&&!window.webkitAudioContext)){asrStatus('المتصفح لا يدعم الميكروفون. افتح رَتِّل من Safari على HTTPS.');return;}
  try{
   liveMediaStream=await navigator.mediaDevices.getUserMedia({audio:{channelCount:1,echoCancellation:false,noiseSuppression:false,autoGainControl:false}});
