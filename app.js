@@ -296,4 +296,52 @@ $('toggleReciteText').addEventListener('click',()=>{const h=$('liveRecitationTex
 $('startRec').addEventListener('click',startRecording);
 $('stopRec').addEventListener('click',stopLiveRecording);
 
+
+ // Qibla compass. First tap obtains location; the next tap requests iOS compass permission in a user gesture.
+ let qiblaBearing=null;
+ function bearingToKaaba(lat,lon){
+  const kLat=21.4225*Math.PI/180,kLon=39.8262*Math.PI/180,pLat=lat*Math.PI/180,pLon=lon*Math.PI/180;
+  const y=Math.sin(kLon-pLon)*Math.cos(kLat),x=Math.cos(pLat)*Math.sin(kLat)-Math.sin(pLat)*Math.cos(kLat)*Math.cos(kLon-pLon);
+  return (Math.atan2(y,x)*180/Math.PI+360)%360;
+ }
+ $('enableQibla')?.addEventListener('click',async()=>{
+  const status=$('qiblaStatus'),button=$('enableQibla');
+  if(qiblaBearing===null){
+   status.textContent='جارٍ تحديد موقعك…';
+   if(!navigator.geolocation){status.textContent='المتصفح لا يدعم تحديد الموقع.';return;}
+   navigator.geolocation.getCurrentPosition(pos=>{
+    qiblaBearing=bearingToKaaba(pos.coords.latitude,pos.coords.longitude);
+    status.textContent='اتجاه القبلة من الشمال: '+Math.round(qiblaBearing)+'°. اضغط تفعيل البوصلة.';
+    button.textContent='تفعيل البوصلة';
+   },err=>{status.textContent=err.code===1?'لم يتم السماح بالموقع. فعّل إذن الموقع.':'تعذر تحديد الموقع. حاول مرة أخرى.';},{enableHighAccuracy:true,timeout:12000,maximumAge:300000});
+   return;
+  }
+  try{
+   if(typeof DeviceOrientationEvent!=='undefined'&&typeof DeviceOrientationEvent.requestPermission==='function'){
+    const permission=await DeviceOrientationEvent.requestPermission();
+    if(permission!=='granted'){status.textContent='لم يتم السماح باستخدام البوصلة.';return;}
+   }
+   window.addEventListener('deviceorientation',e=>{
+    const heading=Number.isFinite(e.webkitCompassHeading)?e.webkitCompassHeading:Number.isFinite(e.alpha)?(360-e.alpha):null;
+    if(heading!==null)$('qiblaNeedle').style.transform='rotate('+((qiblaBearing-heading+360)%360)+'deg)';
+   },true);
+   status.textContent='البوصلة نشطة. وجّه الهاتف حتى يشير السهم لاتجاه القبلة.';
+   button.textContent='البوصلة مفعّلة';
+   button.disabled=true;
+  }catch(err){status.textContent='تعذر تفعيل البوصلة على هذا الجهاز.';}
+ });
+ // Simple local tasbih counter; counts persist on this device.
+ const adhkarSets={morning:['سبحان الله','الحمد لله','الله أكبر'],evening:['أستغفر الله','سبحان الله وبحمده','لا إله إلا الله']};
+ let adhkarSet='morning',adhkarIndex=0,adhkarCount=Number(localStorage.getItem('rattil-adhkar-count')||0);
+ function renderAdhkar(){
+  $('adhkarText').textContent=adhkarSets[adhkarSet][adhkarIndex];
+  $('adhkarCount').textContent=adhkarCount;
+  document.querySelectorAll('[data-adhkar-set]').forEach(x=>x.classList.toggle('selected',x.dataset.adhkarSet===adhkarSet));
+ }
+ document.querySelectorAll('[data-adhkar-set]').forEach(x=>x.addEventListener('click',()=>{adhkarSet=x.dataset.adhkarSet;adhkarIndex=0;adhkarCount=0;localStorage.setItem('rattil-adhkar-count','0');$('adhkarStatus').textContent='ابدأ ذكرك، وسيتم حفظ تقدمك تلقائيًا.';renderAdhkar();}));
+ $('adhkarCounter')?.addEventListener('click',()=>{adhkarCount=Math.min(33,adhkarCount+1);localStorage.setItem('rattil-adhkar-count',String(adhkarCount));renderAdhkar();if(adhkarCount===33)$('adhkarStatus').textContent='أحسنت، اكتمل العدد المحدد.';});
+ $('adhkarReset')?.addEventListener('click',()=>{adhkarCount=0;localStorage.setItem('rattil-adhkar-count','0');$('adhkarStatus').textContent='تمت إعادة العداد.';renderAdhkar();});
+ $('adhkarNext')?.addEventListener('click',()=>{adhkarIndex=(adhkarIndex+1)%adhkarSets[adhkarSet].length;adhkarCount=0;localStorage.setItem('rattil-adhkar-count','0');$('adhkarStatus').textContent='انتقلت إلى الذكر التالي.';renderAdhkar();});
+ renderAdhkar();
+
 })();
