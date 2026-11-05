@@ -18,6 +18,8 @@ jobs:
           node-version: 22
       - run: npm install --no-audit --no-fund
       - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - run: node scripts/smoke-asr.mjs
       - name: Verify bundled output and local runtime assets
         run: |
           test -s dist/index.html
