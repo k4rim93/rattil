@@ -32,7 +32,7 @@ async function init(){
   const [model,corpus,quran]=await Promise.all([fetchModel(),fetchJson(CORPUS_URL,KEYS.corpus),fetchJson(QURAN_URL,KEYS.quran)]);
   if(navigator.storage?.persist)try{await navigator.storage.persist();}catch(e){}
   post("loading_status",{message:"تهيئة محرك Zipformer داخل Web Worker…"});
-  session=await createRecognitionSession({ort,model,corpus,quran,executionProviders:["wasm"],onEvent:event=>post("event",{event})});
+  session=await createRecognitionSession({ort,model:()=>model,corpus:()=>corpus,quran:()=>quran,executionProviders:["wasm"],onEvent:event=>post("event",{event})});
   post("ready");
  }catch(e){console.error("Rattil Zipformer init failed",e);post("error",{message:e?.message||String(e)});}
 }
