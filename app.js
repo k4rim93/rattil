@@ -1,6 +1,8 @@
 (() => {
 const API='https://api.alquran.cloud/v1', $=id=>document.getElementById(id);
 const views={mushaf:'mushafView',memorize:'memorizeView',recite:'reciteView',achievements:'achievementsView',settings:'settingsView'};
+// Bind the ASR action before optional dashboard initialization can fail.
+$('loadAsr').addEventListener('click',loadAsr);
 let currentScreen='home';
 function renderScreen(name){
  currentScreen=views[name]?name:'home';
@@ -192,7 +194,6 @@ async function clearAsrStorage(){
   db.close();asrStatus('تم حذف نموذج Zipformer وملفاته من هذا الجهاز.');
  }catch(e){asrStatus('تعذر حذف الملفات: '+e.message);b.disabled=false;}
 }
-$('loadAsr').addEventListener('click',loadAsr);
 $('clearAsrCache').addEventListener('click',clearAsrStorage);
 $('clearAsrCache').disabled=false;
 function resampleTo16k(input,rate){
