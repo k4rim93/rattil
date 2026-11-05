@@ -85,6 +85,57 @@ body[data-theme="dark"]{--mushaf-page:#050b08;--mushaf-ink:#f7f0df}
 .live-recitation-text .uncertain{color:#b47a13;background:#b47a1318}
 .live-recitation-text .unattempted{color:inherit}
 .live-recitation-text.is-hidden .rec-word{color:transparent!important;text-shadow:0 0 9px var(--text,#ddd);background:transparent!important;user-select:none}
+</style><style>
+/* Rattil recitation workspace — Mushaf-first layout */
+#reciteView.recite-workspace{padding:16px 14px 110px;min-height:calc(100dvh - 24px);position:relative}
+.recite-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.recite-heading h2{margin:4px 0;font-family:Amiri,serif;font-size:30px;color:var(--gold)}
+.recite-heading p{margin:0 0 12px;font-size:13px;opacity:.8}
+.recite-live-indicator{font-size:11px;color:#8fd4a7;white-space:nowrap;padding-top:12px}
+.recite-engine-status{font-size:12px;margin:8px 0}
+.recite-engine-actions{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 14px}
+.recite-engine-actions button{font-size:12px;padding:8px 10px}
+.recite-index-panel,.recite-reader-panel{border:1px solid var(--line);border-radius:16px;background:rgba(0,0,0,.22);padding:12px}
+.recite-index-heading{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.recite-index-heading h3{font:700 22px Amiri,serif;margin:0;color:var(--gold)}
+.recite-index-heading small{font-size:11px;opacity:.75}
+.recite-index-heading>span{font-size:11px;color:var(--gold)}
+.recite-search{width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:11px;background:rgba(255,255,255,.08);color:inherit;font:inherit;font-size:15px;margin-bottom:8px}
+.recite-surah-index-list{display:grid;grid-template-columns:1fr 1fr;gap:7px;max-height:52dvh;overflow:auto;padding:2px}
+.recite-surah-index-item{display:grid;grid-template-columns:30px 1fr;gap:8px;align-items:center;text-align:right;border:1px solid #ffffff20;border-radius:10px;background:rgba(255,255,255,.045);color:inherit;padding:9px 7px;min-width:0}
+.recite-surah-index-item:active{background:#d7b76b22}
+.recite-surah-index-item .surah-index-number{width:28px;height:28px;display:grid;place-items:center;border:1px solid #c6a34f;border-radius:50%;color:var(--gold);font:12px sans-serif}
+.recite-surah-index-item strong{display:block;font:17px Amiri,serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.recite-surah-index-item small{display:block;font:10px sans-serif;opacity:.65}
+.recite-reader-panel[hidden],.recite-index-panel[hidden]{display:none!important}
+.recite-reader-top{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:8px;margin-bottom:10px}
+.recite-reader-top>div{text-align:center;min-width:0}
+.recite-reader-top strong{display:block;font:700 22px Amiri,serif;color:var(--gold)}
+.recite-reader-top small{display:block;font-size:10px;opacity:.7}
+.recite-reader-top button{font-size:12px;padding:8px 10px;white-space:nowrap}
+.live-recitation-text{direction:rtl;text-align:justify;line-height:2.25;font-family:Amiri,serif;font-size:25px;padding:10px 5px;margin:0;max-height:58dvh;overflow:auto;scroll-behavior:smooth;border:0;border-radius:0;background:transparent}
+.recite-ayah{padding:8px 4px 12px;border-bottom:1px solid #ffffff18;scroll-margin:100px;line-height:2.15}
+.recite-ayah.active{background:rgba(205,169,84,.12);border-radius:9px;box-shadow:inset 0 0 0 1px #c6a34f66}
+.recite-ayah-heading{display:flex;align-items:center;gap:8px;margin-bottom:3px;color:var(--gold);font:12px sans-serif}
+.recite-ayah-number{display:inline-grid;place-items:center;width:27px;height:27px;flex:none;border:1px solid #c6a34f;border-radius:50%;color:var(--gold);font:12px sans-serif}
+.recite-ayah-text{display:inline}
+.recite-word{display:inline;border-radius:4px;padding:0 1px;transition:background .15s,color .15s}
+.recite-word.correct{color:#55d38a;background:#16834a20}
+.recite-word.error{color:#ff7777;background:#d52d3620}
+.recite-word.uncertain{color:#e8c36b;background:#b47a1320}
+.live-recitation-text.is-hidden .recite-ayah:not(.revealed) .recite-ayah-text{color:transparent!important;text-shadow:none;user-select:none}
+.live-recitation-text.is-hidden .recite-ayah:not(.revealed) .recite-ayah-text .recite-word{color:transparent!important}
+.live-recitation-text.is-hidden .recite-ayah-number{visibility:visible!important}
+.recite-reader-empty{text-align:center;padding:32px 8px;color:#d8c99e;font:19px Amiri,serif}
+.recite-result{font-size:12px;margin:8px 0 0}
+.recite-bottom-bar{position:sticky;bottom:calc(env(safe-area-inset-bottom) + 4px);z-index:5;display:flex;align-items:center;gap:9px;padding:10px;margin:12px -2px 0;border:1px solid #ffffff28;border-radius:18px;background:rgba(10,13,12,.94);backdrop-filter:blur(16px);box-shadow:0 6px 22px #0006}
+.recite-bottom-status{flex:1;min-width:0;font-size:11px;opacity:.8}
+.recite-mic-button{width:58px;height:58px;border:0;border-radius:50%;background:#28c76f;color:white;font-size:25px;box-shadow:0 0 0 5px #28c76f24,0 3px 18px #28c76f66}
+.recite-mic-button:disabled{opacity:.4;box-shadow:none}
+.recite-stop-button{padding:10px 14px;border:1px solid #ffffff35;border-radius:12px;background:#292929;color:inherit}
+.recite-stop-button:disabled{display:none}
+.recite-privacy,.recite-license{font-size:10px;margin-top:8px}
+@media(max-width:380px){.recite-surah-index-list{grid-template-columns:1fr}.live-recitation-text{font-size:23px}.recite-reader-top{grid-template-columns:auto 1fr auto}.recite-reader-top button{padding:7px;font-size:11px}}
 </style></head><body>
 <div class="sky" aria-hidden="true"><div class="stars"></div><div class="moon"></div><div class="cloud one"></div><div class="cloud two"></div><div class="cloud three"></div><div class="horizon"></div></div>
 <main class="app"><section id="homeView" class="home-view"><div class="top"><button class="round" aria-label="التنبيهات"><svg viewBox="0 0 24 24"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg></button><div class="brand">رَتِّل</div><button class="round" id="openSettings" aria-label="الإعدادات"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-1.8 1.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5v.1h-2.6v-.1a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1-1.8-1.8.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H6.4v-2.6h.1a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1 1.8-1.8.1.1a1.7 1.7 0 0 0 1.9.3 1.7 1.7 0 0 0 1-1.5v-.1H15v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1 1.8 1.8-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.5 1h.1V14h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button></div><div class="tag">رحلتك مع القرآن</div>
@@ -123,7 +174,25 @@ body.screen-open .view .bottomBack{display:inline-flex}
 </div><div class="muted" style="margin-top:14px">مصدر النص: AlQuran Cloud API. يُعرض النص كما ورد من المصدر دون تعديل.</div>
 </section>
 <section id="memorizeView" class="view glass panel"><button class="action bottomBack" data-home>← الرئيسية</button><h2>الحفظ</h2><p>حدد السورة والآيات التي تريد حفظها. تقدمك محفوظ على هذا الجهاز.</p><div class="controls"><select id="memorizeSurah"></select><input id="memorizeFrom" type="number" min="1" value="1" aria-label="من آية"><input id="memorizeTo" type="number" min="1" value="7" aria-label="إلى آية"><button id="savePlan">حفظ الخطة</button></div><div id="planStatus" class="status">لم يتم تحديد خطة بعد.</div></section>
-<section id="reciteView" class="view glass panel"><button class="action bottomBack" data-home>← الرئيسية</button><h2>التسميع بالذكاء الاصطناعي</h2><p>التعرف على التلاوة يعمل محليًا على جهازك. أول مرة تحتاج تنزيل نموذج التسميع (حوالي 66 ميجابايت) وملفاته المساعدة. بعد التنزيل تُحفظ الملفات على الجهاز.</p><div id="asrStatus" class="status" aria-live="polite">محرك التسميع لم يتم تحميله بعد.</div><div class="controls"><button id="loadAsr" class="action">تحميل محرك التسميع</button><button id="clearAsrCache" class="action" disabled>حذف النموذج المحفوظ</button></div><div class="live-recitation-controls"><label for="reciteSurahSelect">السورة</label><select id="reciteSurahSelect"></select><button id="toggleReciteText" class="action" type="button" aria-pressed="false">إخفاء النص</button><button id="startRec" class="action" disabled>🎙 ابدأ التسميع المباشر</button><button id="stopRec" class="action" disabled>إيقاف التسميع</button></div><div id="liveRecitationText" class="live-recitation-text" aria-live="polite">حمّل المحرك، اختر السورة، ثم ابدأ القراءة.</div><div id="asrResult" class="status" aria-live="polite">بعد التسجيل سيظهر موضع الآية إذا تجاوزت النتيجة حد الثقة. لن نخمن عند عدم التأكد.</div><div class="muted">الخصوصية: الصوت لا يُرفع إلى خادم؛ تتم المعالجة داخل المتصفح. لا يدّعي هذا الإصدار تقييم أحكام التجويد.</div><div class="muted" style="margin-top:10px">النموذج: Zipformer (NPL-1.2) • المكتبة: @tilawa/core (MIT) • ملفات النموذج والبيانات تخضع لترخيص NPL-1.2 غير التجاري.</div></section>
+<section id="reciteView" class="view glass panel recite-workspace">
+<button class="action bottomBack" data-home>← الرئيسية</button>
+<header class="recite-heading"><div><h2>التسميع</h2><p>اختر سورة، ثم ابدأ التلاوة. تتم المعالجة محليًا على جهازك.</p></div><span class="recite-live-indicator" id="reciteLiveIndicator">● جاهز</span></header>
+<div id="asrStatus" class="status recite-engine-status" aria-live="polite">محرك التسميع لم يتم تحميله بعد.</div>
+<div class="recite-engine-actions"><button id="loadAsr" class="action">تحميل محرك التسميع</button><button id="clearAsrCache" class="action" disabled>حذف النموذج المحفوظ</button></div>
+<section id="reciteIndexPanel" class="recite-index-panel">
+<div class="recite-index-heading"><div><h3>فهرس السور</h3><small>اختر السورة التي تريد تسميعها</small></div><span>١١٤ سورة</span></div>
+<input id="reciteSurahSearchInput" class="recite-search" type="search" placeholder="ابحث باسم السورة أو رقمها" aria-label="البحث في فهرس السور">
+<div id="reciteSurahIndexList" class="recite-surah-index-list"><div class="muted">جارٍ تحميل فهرس السور…</div></div>
+</section>
+<section id="reciteReaderPanel" class="recite-reader-panel" hidden>
+<div class="recite-reader-top"><button id="reciteBackToIndex" class="action">‹ الفهرس</button><div><strong id="reciteCurrentSurahName">سورة الفاتحة</strong><small id="reciteCurrentSurahMeta">٧ آيات</small></div><button id="toggleReciteText" class="action" type="button" aria-pressed="false">إخفاء الآيات</button></div>
+<div id="liveRecitationText" class="live-recitation-text" aria-live="polite"><div class="recite-reader-empty">اختر سورة من الفهرس لعرض آياتها.</div></div>
+<div id="asrResult" class="status recite-result" aria-live="polite">سيتم تمييز موضع التلاوة تلقائيًا عند التعرف عليه.</div>
+</section>
+<div class="recite-bottom-bar"><div class="recite-bottom-status" id="reciteBottomStatus">حمّل محرك التسميع أول مرة لاستخدام الميكروفون.</div><button id="startRec" class="recite-mic-button" disabled aria-label="ابدأ التسميع">🎙</button><button id="stopRec" class="recite-stop-button" disabled>إيقاف</button></div>
+<div class="muted recite-privacy">الصوت لا يُرفع إلى خادم. لا يدّعي هذا الإصدار تقييم أحكام التجويد.</div>
+<div class="muted recite-license">Zipformer (NPL-1.2) • @tilawa/core (MIT) • ملفات النموذج والبيانات تخضع لترخيص NPL-1.2 غير التجاري.</div>
+</section>
 <section id="achievementsView" class="view glass panel"><button class="action bottomBack" data-home>← الرئيسية</button><h2>إنجازاتي</h2><div id="achievementStats" class="status">جارٍ قراءة تقدمك المحفوظ على هذا الجهاز…</div><p class="muted">الإحصائيات ستُحتسب من جلسات القراءة والحفظ المسجلة فعليًا، دون أرقام تجريبية.</p></section>
 <section id="settingsView" class="view glass panel"><button class="action bottomBack" data-home>← الرئيسية</button><h2>الإعدادات</h2><div class="saved-bookmarks"><h3>مظهر التطبيق</h3><p class="muted">اختر المظهر المناسب، وسيتم حفظ اختيارك على هذا الجهاز.</p><div class="controls theme-settings"><button type="button" data-theme-choice="auto">تلقائي حسب الجهاز</button><button type="button" data-theme-choice="light">نهاري</button><button type="button" data-theme-choice="dark">ليلي</button></div><div id="themeStatus" class="muted" aria-live="polite"></div></div></section>
 <script type="module" src="/app.js"></script><script>if("serviceWorker" in navigator && location.protocol==="https:"){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(e=>console.warn("Rattil offline worker registration failed",e)));}</script>
