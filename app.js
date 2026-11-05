@@ -84,12 +84,10 @@ async function openRecitationSurah(s){
   host.replaceChildren();
   data.ayahs.forEach(a=>{
    const article=document.createElement('article');article.className='recite-ayah';article.dataset.recitationAyah=s.number+':'+a.numberInSurah;
-   const heading=document.createElement('div');heading.className='recite-ayah-heading';
-   const marker=document.createElement('span');marker.className='recite-ayah-number';marker.textContent=a.numberInSurah;
-   heading.append(marker);
    const text=document.createElement('span');text.className='recite-ayah-text';
    String(a.text||'').split(/\s+/).filter(Boolean).forEach((word,i)=>{const span=document.createElement('span');span.className='recite-word unattempted';span.textContent=word+' ';span.dataset.wordIndex=i;text.append(span);});
-   article.append(heading,text);host.append(article);
+   const marker=document.createElement('span');marker.className='recite-ayah-number';marker.textContent=a.numberInSurah;marker.setAttribute('aria-label','الآية '+a.numberInSurah);
+   article.append(text,marker);host.append(article);
   });
   $('reciteBottomStatus').textContent='جاهز للتسميع · '+s.name;
   $('asrResult').textContent='ابدأ القراءة، وسيتم تمييز الآية والكلمات التي يتعرف عليها المحرك.';
