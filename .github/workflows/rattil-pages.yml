@@ -2,7 +2,7 @@ name: Rattil GitHub Pages deployment
 on:
   push:
     branches:
-      - deploy/github-pages-basepath
+      - fix/rattil-pages-asr-paths-2026-11-05
   workflow_dispatch:
 permissions:
   contents: read
@@ -12,9 +12,9 @@ concurrency:
   group: github-pages
   cancel-in-progress: true
 jobs:
-  build-and-deploy:
+  build-test-deploy:
     runs-on: ubuntu-24.04
-    timeout-minutes: 35
+    timeout-minutes: 45
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -23,10 +23,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - uses: actions/configure-pages@v5
+          cache: npm
       - run: npm install --no-audit --no-fund
-      - run: npm run build
-      - name: Verify GitHub Pages paths and local ASR assets
+      - name: Build production bundle
+        run: npm run build
+      - name: Verify deployable files
         run: |
           test -s dist/index.html
           test -n "$(find dist/assets -maxdepth 1 -name '*.js' -print -quit)"
@@ -39,6 +40,10 @@ jobs:
           grep -q '/rattil/' dist/index.html
           grep -q '"/rattil/"' dist/manifest.webmanifest
           ! grep -R "cdn.jsdelivr.net/npm/onnxruntime-web\\|cdn.jsdelivr.net/npm/@tilawa/core" dist
+      - name: Install Chromium for browser smoke test
+        run: npx playwright install --with-deps chromium
+      - name: Test app and ASR under GitHub Pages subpath
+        run: node scripts/smoke-asr.mjs
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
