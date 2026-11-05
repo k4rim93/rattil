@@ -136,9 +136,82 @@ body[data-theme="dark"]{--mushaf-page:#050b08;--mushaf-ink:#f7f0df}
 .recite-stop-button:disabled{display:none}
 .recite-privacy,.recite-license{font-size:10px;margin-top:8px}
 @media(max-width:380px){.recite-surah-index-list{grid-template-columns:1fr}.live-recitation-text{font-size:23px}.recite-reader-top{grid-template-columns:auto 1fr auto}.recite-reader-top button{padding:7px;font-size:11px}}
+</style>
+<style id="rattil-ux-v1">
+:root{--ux-bg:#0b100e;--ux-surface:#141b17;--ux-surface-2:#1b241e;--ux-line:#303d34;--ux-text:#f4f0e6;--ux-muted:#a9b2a8;--ux-gold:#d8b86c;--ux-green:#28533d}
+html,body{background:var(--ux-bg)!important;color:var(--ux-text);font-family:'IBM Plex Sans Arabic',sans-serif}
+body{background:radial-gradient(ellipse at 50% -20%,#243c2e 0,transparent 55%),var(--ux-bg)!important}
+.sky{display:none!important}
+.app{width:min(100%,560px);padding:calc(env(safe-area-inset-top) + 14px) 18px calc(env(safe-area-inset-bottom) + 22px)}
+.ux-home{min-height:calc(100dvh - env(safe-area-inset-top));display:flex;flex-direction:column}
+.ux-header{display:flex;align-items:center;justify-content:space-between;margin:2px 2px 22px}
+.ux-brand-mark{font:700 34px Amiri,serif;color:var(--ux-gold);letter-spacing:.2px}
+.ux-icon-button{width:42px;height:42px;border:1px solid var(--ux-line);border-radius:50%;background:var(--ux-surface);color:var(--ux-text);font-size:19px}
+.ux-eyebrow{margin:0 0 9px;color:var(--ux-gold);font-size:12px}
+.ux-welcome{display:flex;align-items:center;justify-content:space-between;padding:21px 19px;border:1px solid #536b58;border-radius:20px;background:linear-gradient(125deg,#1c3829,#14231b 75%);box-shadow:0 12px 30px #0003}
+.ux-welcome-copy span{font-size:12px;color:#d8cba8}.ux-welcome h1{font:700 27px Amiri,serif;margin:5px 0;color:#fff8e9}.ux-welcome p{font-size:12px;color:#c1c9be;margin:0}
+.ux-welcome-symbol{font:64px Amiri,serif;color:var(--ux-gold);opacity:.85;padding:0 8px}
+.ux-primary-actions{display:grid;gap:10px;margin-top:19px}
+.ux-action{display:flex;align-items:center;gap:13px;width:100%;min-height:75px;padding:12px 15px;border:1px solid var(--ux-line);border-radius:16px;background:var(--ux-surface);color:var(--ux-text);text-align:right}
+.ux-action:active,.ux-secondary-card:active{transform:scale(.985)}
+.ux-action-primary{background:#17251c;border-color:#3b5b45}
+.ux-action-gold{background:#2b281c;border-color:#806b3c}
+.ux-action-icon{width:42px;height:42px;display:grid;place-items:center;flex:none;border-radius:13px;background:#ffffff0c;font-size:21px}
+.ux-action strong,.ux-secondary-card strong{display:block;font-size:15px;font-weight:700}
+.ux-action small,.ux-secondary-card small{display:block;margin-top:3px;color:var(--ux-muted);font-size:11px}
+.ux-arrow{margin-right:auto;color:var(--ux-gold);font-size:25px}
+.ux-secondary-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:13px}
+.ux-secondary-card{display:flex;flex-direction:column;align-items:flex-start;gap:5px;min-height:98px;padding:13px;border:1px solid var(--ux-line);border-radius:15px;background:#111814;color:var(--ux-text);text-align:right}
+.ux-secondary-card>span{font-size:20px;color:var(--ux-gold)}
+.ux-home-footer{margin-top:auto;padding:26px 0 8px;text-align:center;color:#9eaa9f;font:16px Amiri,serif}
+.legacy-home-content{display:none!important}
+.view{min-height:calc(100dvh - env(safe-area-inset-top) - 12px);padding:15px 12px 25px;background:var(--ux-surface)!important;border:1px solid var(--ux-line)!important;border-radius:20px!important;box-shadow:0 12px 30px #0003}
+.view h2{color:var(--ux-gold)}
+.controls select,.controls input,.controls button,.action{background:#202a23;color:var(--ux-text);border:1px solid var(--ux-line);border-radius:12px}
+.controls select option{color:#111}
+.recite-workspace{padding:13px 10px 18px!important}
+.recite-heading h2{font-size:25px}
+.recite-engine-status{background:#1b2820;border:1px solid var(--ux-line);border-radius:12px}
+.recite-engine-actions button{background:#1c2921;border-color:#435447}
+.recite-index-panel,.recite-reader-panel{background:transparent;border:0;border-radius:0;padding:0}
+.recite-index-heading h3{color:var(--ux-gold)}
+.recite-search{background:#151c18;border-color:var(--ux-line);color:var(--ux-text)}
+.recite-surah-index-item{background:#151c18;border-color:var(--ux-line);border-radius:12px}
+.recite-reader-top{padding:8px 0;border-bottom:1px solid var(--ux-line)}
+.recite-reader-top strong{color:var(--ux-gold)}
+.live-recitation-text{max-height:calc(100dvh - 250px);font-size:25px;padding:12px 2px;color:var(--ux-text)}
+.recite-ayah{border-bottom:1px solid #ffffff12}
+.recite-ayah.active{background:#d8b86c12;box-shadow:inset 0 0 0 1px #d8b86c55}
+.recite-ayah-number{border-color:var(--ux-gold);color:var(--ux-gold)}
+.recite-bottom-bar{position:fixed;right:12px;top:50%;bottom:auto;transform:translateY(-50%);z-index:100;display:flex;flex-direction:column;align-items:center;gap:7px;width:auto;margin:0;padding:0;border:0;background:transparent;box-shadow:none;backdrop-filter:none}
+.recite-bottom-status{display:none}
+.recite-mic-button{width:48px;height:48px;border:1px solid #d8b86c;background:#c29d4c;color:#111;border-radius:50%;font-size:20px;box-shadow:0 4px 18px #0008}
+.recite-stop-button{padding:7px 9px;background:#17231b;border-color:#65715e;font-size:11px}
+.recite-privacy,.recite-license{padding-right:48px;color:#9da89e}
+#mushafReader{background:#07130d!important}
+#mushafReader .mushaf-paper{background:#07130d!important;border-color:#b8954c!important}
+#mushafReader #readerAyahs{background:#07130d!important}
+.reader-index-panel{background:#111914;border-color:#8c7443}
+.reader-surah-row{border-bottom-color:#ffffff12}
+@media(max-width:390px){.app{padding-left:13px;padding-right:13px}.ux-welcome h1{font-size:24px}.ux-welcome-symbol{font-size:52px}.ux-action{min-height:70px}.live-recitation-text{font-size:23px}}
+@media(prefers-reduced-motion:reduce){.view{animation:none}}
 </style></head><body>
 <div class="sky" aria-hidden="true"><div class="stars"></div><div class="moon"></div><div class="cloud one"></div><div class="cloud two"></div><div class="cloud three"></div><div class="horizon"></div></div>
-<main class="app"><section id="homeView" class="home-view"><div class="top"><button class="round" aria-label="التنبيهات"><svg viewBox="0 0 24 24"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg></button><div class="brand">رَتِّل</div><button class="round" id="openSettings" aria-label="الإعدادات"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-1.8 1.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5v.1h-2.6v-.1a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1-1.8-1.8.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H6.4v-2.6h.1a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1 1.8-1.8.1.1a1.7 1.7 0 0 0 1.9.3 1.7 1.7 0 0 0 1-1.5v-.1H15v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1 1.8 1.8-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.5 1h.1V14h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button></div><div class="tag">رحلتك مع القرآن</div>
+<main class="app"><section id="homeView" class="home-view ux-home">
+  <header class="ux-header"><div class="ux-brand-mark">رَتِّل</div><button id="openSettings" class="ux-icon-button" aria-label="الإعدادات">⚙</button></header>
+  <p class="ux-eyebrow">رحلتك مع القرآن</p>
+  <section class="ux-welcome"><div class="ux-welcome-copy"><span>السلام عليكم</span><h1>أهلاً بك في رَتِّل</h1><p>اقرأ، احفظ، وسمّع على راحتك.</p></div><div class="ux-welcome-symbol" aria-hidden="true">۞</div></section>
+  <section class="ux-primary-actions" aria-label="ابدأ">
+    <button class="ux-action ux-action-primary" id="resumeReading" type="button"><span class="ux-action-icon">📖</span><span><strong>كمّل قراءتك</strong><small id="lastReadLabel">ارجع لآخر موضع وصلت له</small></span><span class="ux-arrow">‹</span></button>
+    <button class="ux-action ux-action-gold" data-navigate="recite" type="button"><span class="ux-action-icon">🎙</span><span><strong>ابدأ التسميع</strong><small>استمع لتلاوتك وتابع تقدمك</small></span><span class="ux-arrow">‹</span></button>
+    <button class="ux-action" id="homeOpenIndex" type="button"><span class="ux-action-icon">☷</span><span><strong>فهرس المصحف</strong><small>السور، الأجزاء والصفحات</small></span><span class="ux-arrow">‹</span></button>
+  </section>
+  <section class="ux-secondary-grid">
+    <button class="ux-secondary-card" data-navigate="memorize" type="button"><span>✦</span><strong>خطة الحفظ</strong><small>حدد وردك القادم</small></button>
+    <button class="ux-secondary-card" data-navigate="achievements" type="button"><span>◷</span><strong>تقدمك</strong><small>راجع إنجازاتك</small></button>
+  </section>
+  <footer class="ux-home-footer">اللهم اجعل القرآن ربيع قلوبنا ونور صدورنا</footer>
+  <div class="legacy-home-content" hidden><div class="top"><button class="round" aria-label="التنبيهات"><svg viewBox="0 0 24 24"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg></button><div class="brand">رَتِّل</div><button class="round" id="openSettings" aria-label="الإعدادات"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-1.8 1.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5v.1h-2.6v-.1a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1-1.8-1.8.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H6.4v-2.6h.1a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1 1.8-1.8.1.1a1.7 1.7 0 0 0 1.9.3 1.7 1.7 0 0 0 1-1.5v-.1H15v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1 1.8 1.8-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.5 1h.1V14h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button></div><div class="tag">رحلتك مع القرآن</div>
 <section class="glass prayer"><div class="cardhead"><span>مواقيت الصلاة　♜</span><span class="city">⌖ القاهرة</span></div><div class="next" id="nextPrayer">جارٍ تحميل مواقيت الصلاة</div><button class="timer clock-top" id="prayerCountdown" type="button" aria-label="العودة إلى أعلى الصفحة">--:--:--</button><div class="track"><span></span></div><div class="range"><span>الصلاة السابقة <b id="previousPrayer">—</b></span><span>الصلاة القادمة <b id="upcomingPrayer">—</b></span></div>
 <div class="times" id="prayerTimes" dir="rtl"><div class="time"><div class="sun"><svg viewBox="0 0 32 32"><path d="M4 24h24M8 24h16M16 4v7M7 10l4 4M25 10l-4 4M4 17h4M24 17h4"/></svg></div><small>الفجر</small><b id="prayer-Fajr">—:—</b></div><div class="time"><div class="sun"><svg viewBox="0 0 32 32"><path d="M4 24h24M9 24a7 7 0 0 1 14 0M16 13V3m-4 4 4-4 4 4M5 17h3m16 0h3"/></svg></div><small>الشروق</small><b id="prayer-Sunrise">—:—</b></div><div class="time"><div class="sun"><svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="6"/><path d="M16 2v4m0 20v4M2 16h4m20 0h4M6 6l3 3m14 14 3 3M26 6l-3 3M9 23l-3 3"/></svg></div><small>الظهر</small><b id="prayer-Dhuhr">—:—</b></div><div class="time"><div class="sun"><svg viewBox="0 0 32 32"><circle cx="16" cy="17" r="5"/><path d="M16 2v4m-10 1 3 3m14-3-3 3M2 17h4m20 0h4M5 27h22M9 23l-4 4m18-4 4 4"/></svg></div><small>العصر</small><b id="prayer-Asr">—:—</b></div><div class="time"><div class="sun"><svg viewBox="0 0 32 32"><path d="M3 24h26M8 24a8 8 0 0 1 16 0M16 4v7m-4-3 4 3 4-3M5 28h22"/></svg></div><small>المغرب</small><b id="prayer-Maghrib">—:—</b></div><div class="time"><div class="sun"><svg viewBox="0 0 32 32"><path d="M23 21A11 11 0 0 1 10 5a12 12 0 1 0 13 16Z"/><path d="m23 4 1.2 3.2L27 8l-2.8 1.2L23 12l-1.2-2.8L19 8l2.8-.8L23 4ZM9 13l.8 2 2.2 1-2.2.8L9 19l-.8-2.2L6 16l2.2-1L9 13Z"/></svg></div><small>العشاء</small><b id="prayer-Isha">—:—</b></div></div>
 <div class="datebar"><button id="previousDate" aria-label="اليوم السابق">‹</button><span id="date">جارٍ تحديد التاريخ</span><button id="nextDate" aria-label="اليوم التالي">›</button></div><div id="prayerSource" class="muted" style="text-align:center;margin-top:8px;font-size:10px">المواقيت حسب القاهرة</div></section>
@@ -148,7 +221,8 @@ body[data-theme="dark"]{--mushaf-page:#050b08;--mushaf-ink:#f7f0df}
 <a href="#memorize"><span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3.5h12a2 2 0 0 1 2 2V21l-8-4-8 4V5.5a2 2 0 0 1 2-2zM8 8h8M8 11h8"/></svg></span>الحفظ</a>
 <a href="#recite"><span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10v4M7 6v12M11 3v18M15 7v10M19 10v4M22 11v2"/></svg></span>التسميع</a>
 <a href="#achievements"><span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4h8v4a4 4 0 0 1-8 0zM12 12v5M8 21h8M9 17h6M8 6H4v2a4 4 0 0 0 4 4M16 6h4v2a4 4 0 0 1-4 4"/></svg></span>إنجازاتي</a>
-</nav><div class="foot">اللهم اجعل القرآن ربيع قلوبنا ونور صدورنا</div></section>
+</nav><div class="foot">اللهم اجعل القرآن ربيع قلوبنا ونور صدورنا</div></div>
+</section>
 <style>
 .home-view{display:block}.home-view[hidden]{display:none!important}
 .view{display:none;margin-top:0;min-height:calc(100dvh - env(safe-area-inset-top) - 24px);padding:18px 16px 30px;animation:screenIn .22s ease-out}
