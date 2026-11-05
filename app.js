@@ -88,7 +88,7 @@ async function openRecitationSurah(s){
    const marker=document.createElement('span');marker.className='recite-ayah-number';marker.textContent=a.numberInSurah;
    heading.append(marker);
    const text=document.createElement('span');text.className='recite-ayah-text';
-   String(a.text||'').split(/\\s+/).filter(Boolean).forEach((word,i)=>{const span=document.createElement('span');span.className='recite-word unattempted';span.textContent=word+' ';span.dataset.wordIndex=i;text.append(span);});
+   String(a.text||'').split(/\s+/).filter(Boolean).forEach((word,i)=>{const span=document.createElement('span');span.className='recite-word unattempted';span.textContent=word+' ';span.dataset.wordIndex=i;text.append(span);});
    article.append(heading,text);host.append(article);
   });
   $('reciteBottomStatus').textContent='جاهز للتسميع · '+s.name;
