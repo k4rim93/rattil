@@ -174,15 +174,18 @@ async function getAsrModel(){
 async function refreshAsrStorageStatus(){try{const model=await asrDbGet(ASR_MODEL_KEY);const b=$('clearAsrCache');if(b)b.disabled=!(model instanceof ArrayBuffer);if(model instanceof ArrayBuffer)asrStatus('نموذج التسميع محفوظ على الجهاز ('+(model.byteLength/1048576).toFixed(0)+' ميجابايت).');}catch(e){console.warn('ASR storage check failed',e);}}
 async function clearAsrStorage(){if(asrSession){asrStatus('أغلق محرك التسميع أولًا بإعادة تحميل الصفحة قبل حذف النموذج.');return;}const b=$('clearAsrCache');b.disabled=true;try{await asrDbDelete();asrStatus('تم حذف ملفات التسميع المحفوظة من هذا الجهاز.');}catch(e){asrStatus('تعذر حذف الملفات: '+(e.message||e));b.disabled=false;}}
 async function loadAsr(){
- const btn=$('loadAsr');btn.disabled=true;
+ const btn=$('loadAsr');btn.disabled=true;let loadingStep='تحميل مكتبة ONNX Runtime';
  try{
-  asrStatus('تحميل مكتبات التشغيل…');
-  ort=await import('https://cdn.jsdelivr.net/npm/onnxruntime-web@1.24.2/dist/ort.min.mjs');
-  ort.env.wasm.wasmPaths='https://cdn.jsdelivr.net/npm/onnxruntime-web@1.24.2/dist/';
+  asrStatus('تحميل مكتبة تشغيل النموذج…');
+  ort=await import('https://cdn.jsdelivr.net/npm/onnxruntime-web@1.23.2/dist/ort.min.mjs');
+  ort.env.wasm.wasmPaths='https://cdn.jsdelivr.net/npm/onnxruntime-web@1.23.2/dist/';
   ort.env.wasm.numThreads=1;
-  const core=await import('https://esm.sh/@tilawi/quran-asr@0.1.0');
+  loadingStep='تحميل مكتبة مطابقة الآيات';
+  const core=await import('https://cdn.jsdelivr.net/npm/@tilawi/quran-asr@0.1.0/+esm');
+  loadingStep='تحميل نموذج التسميع وملفات القرآن';
   const [model,files]=await Promise.all([getAsrModel(),getAsrAssets()]);
   if(navigator.storage?.persist){try{await navigator.storage.persist();}catch(e){console.info('Persistent storage request unavailable',e);}}
+  loadingStep='تشغيل محرك WebAssembly';
   asrStatus('تهيئة النموذج المحفوظ على الجهاز…');
   const session=await ort.InferenceSession.create(model,{executionProviders:['wasm'],graphOptimizationLevel:'all'});
   const audioName=session.inputNames.find(n=>/audio|signal|input/i.test(n))||session.inputNames[0];
@@ -195,6 +198,7 @@ async function loadAsr(){
    const out=result[outputName],dims=out.dims;
    return {logprobs:out.data,timeSteps:Number(dims[dims.length-2]),vocabSize:Number(dims[dims.length-1])};
   }};
+  loadingStep='تهيئة نموذج التعرف على التلاوة';
   asrSession=core.createAsrSession(runner,{vocab:files.vocab,quranCtcTokens:files.tokens,quran:files.quran,blankId:1024});
   assets={quran:files.quran,judgeAttempt:core.judgeAttempt};
   $('startRec').disabled=false;
@@ -202,7 +206,7 @@ async function loadAsr(){
   const size=(model.byteLength/1048576).toFixed(0);
   asrStatus('محرك التسميع جاهز. النموذج محفوظ على الجهاز ('+size+' ميجابايت) — المرة القادمة لن تحتاج تنزيله.');
   await refreshAsrStorageStatus();
- }catch(e){console.error(e);asrStatus('لم يكتمل تحميل المحرك: '+(e?.message||'خطأ غير معروف')+'. جرّب شبكة مستقرة ثم أعد المحاولة.');btn.disabled=false;}
+ }catch(e){console.error('Rattil ASR load failed at: '+loadingStep,e);asrStatus('فشل '+loadingStep+': '+(e?.message||'خطأ غير معروف')+'. جرّب شبكة مستقرة ثم أعد المحاولة.');btn.disabled=false;}
 }
 $('loadAsr').addEventListener('click',loadAsr);$('clearAsrCache').addEventListener('click',clearAsrStorage);refreshAsrStorageStatus();
 let liveAudioContext=null,liveMediaStream=null,liveSource=null,liveProcessor=null,liveSamples=[],liveSampleCount=0,lastLiveInference=0,liveInferenceBusy=false,liveExpectedSurah=0,liveLastVerse=0,liveWordStates=[];
