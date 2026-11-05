@@ -8,7 +8,8 @@ try{
  for(let i=0;i<60;i++){try{const r=await fetch("http://127.0.0.1:4173/");if(r.ok){ready=true;break;}}catch{}await delay(1000);}
  if(!ready)throw Error("Vite preview did not start");
  browser=await chromium.launch({headless:true,args:["--no-sandbox","--use-fake-device-for-media-stream","--use-fake-ui-for-media-stream"]});
- const page=await browser.newPage();
+ const context=await browser.newContext({permissions:["microphone"]});
+ const page=await context.newPage();
  page.on("pageerror",e=>console.error("PAGE ERROR",e));
  page.on("console",m=>{if(m.type()==="error")console.error("BROWSER",m.text());});
  await page.goto("http://127.0.0.1:4173/",{waitUntil:"networkidle"});
@@ -19,6 +20,7 @@ try{
  console.log("ASR INIT STATUS:",status);
  if(!status.includes("جاهز"))throw Error("ASR initialization failed: "+status);
  await page.locator("#startRec").click();
+ await page.waitForFunction(()=>document.querySelector("#stopRec")?.disabled===false,null,{timeout:15000});
  await page.waitForTimeout(2500);
  await page.locator("#stopRec").click();
  await page.waitForTimeout(1000);
