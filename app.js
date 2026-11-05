@@ -173,7 +173,7 @@ async function loadAsr(){
  const btn=$('loadAsr');btn.disabled=true;asrStatus('تشغيل محرك التسميع…');
  try{
   stopWorker();
-  asrWorker=new Worker('./asr-worker.js?v=zipformer-a0w-v1',{type:'module'});
+  asrWorker=new Worker(new URL('./asr-worker.js',import.meta.url),{type:'module'});
   asrWorker.onmessage=e=>{
    const m=e.data||{};
    if(m.type==='loading_status')asrStatus(m.message);
