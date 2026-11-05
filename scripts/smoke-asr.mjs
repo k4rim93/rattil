@@ -14,6 +14,8 @@ try{
  page.on("console",m=>{if(m.type()==="error")console.error("BROWSER",m.text());});
  await page.goto("http://127.0.0.1:4173/",{waitUntil:"networkidle"});
  await page.locator('a[href="#recite"]').click();
+ await page.locator(".recite-surah-index-item").first().click();
+ await page.waitForSelector("#liveRecitationText .recite-ayah",{timeout:30000});
  await page.locator("#loadAsr").click();
  await page.waitForFunction(()=>{const s=document.querySelector("#asrStatus")?.textContent||"";return s.includes("جاهز")||s.includes("تعذر")||s.includes("حدث خطأ");},{timeout:240000});
  const status=await page.locator("#asrStatus").innerText();
